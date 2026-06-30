@@ -53,6 +53,8 @@ canvas {
   display: flex;
   gap: 2.5rem;
   list-style: none;
+
+  cursor: pointer;
 }
 
 .nav-links a {

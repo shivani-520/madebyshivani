@@ -6,7 +6,7 @@ import { useCarouselScroll } from "./hooks/useCarouselScroll.js";
 
 const GAP = 2;
 
-const ITEMS = [
+const WORK_ITEMS = [
   {
     title: "TG Jones Virtual Store",
     description: "A virtual retail experience built in 3D with interactive product browsing.",
@@ -47,6 +47,28 @@ const ITEMS = [
     height: 1.3,
     stack: ["Unity", "C#"]
   },
+];
+
+const ABOUT_ITEMS = [
+  {
+    title: "About Me",
+    description: "I’m a creative developer focused on 3D web experiences.",
+    image: "/images/me.webp",
+    width: 1.5,
+    height: 1.5,
+    stack: ["React", "Three.js", "Creative Coding"]
+  },
+];
+
+const CONTACT_ITEMS = [
+  {
+    title: "Get in Touch",
+    description: "Feel free to reach out for collaborations or opportunities.",
+    image: "/images/me.webp", // or any placeholder texture
+    width: 2.0,
+    height: 1.2,
+    stack: ["shivani.d.sharma@outlook.com", "linkedin.com/in/shivani-devi-sharma", "github.com/shivani-520"]
+  }
 ];
 
 // precompute each card's center offset and the total track width once,
@@ -248,16 +270,21 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
   );
 }
 
-function Carousel() 
+function Carousel({ items }) 
 {
-  const { centers, totalWidth } = useLayout(ITEMS);
-  const { scrollOffset, selectedIndex, selectCard } = useCarouselScroll(centers, totalWidth);
+  const { centers, totalWidth } = useLayout(items);
+  const { scrollOffset, selectedIndex, selectCard, reset } =
+    useCarouselScroll(centers, totalWidth);
+
+  useEffect(() => {
+    reset?.(); // 👈 critical
+  }, [items, reset]);
 
   return (
     <group>
-      {ITEMS.map((item, i) => (
+      {items.map((item, i) => (
         <Card
-          key={i}
+          key={item.title} // also important (see below)
           index={i}
           baseCenter={centers[i]}
           totalWidth={totalWidth}
@@ -276,16 +303,23 @@ function Carousel()
   );
 }
 
-function Nav() 
+function Nav({ setSection }) 
 {
   return (
     <nav className="nav">
       <span className="nav-logo">Made By Shivani</span>
+
       <div className="nav-right">
         <ul className="nav-links">
-          <li><a href="#work">Work</a></li>
-          <li><a href="#about">About</a></li>
-          <li><a href="#contact">Contact</a></li>
+          <li>
+            <a onClick={() => setSection("work")}>Work</a>
+          </li>
+          <li>
+            <a onClick={() => setSection("about")}>About</a>
+          </li>
+          <li>
+            <a onClick={() => setSection("contact")}>Contact</a>
+          </li>
         </ul>
       </div>
     </nav>
@@ -356,14 +390,30 @@ function Footer()
 }
 
 
-export default function App() {
+export default function App() 
+{
+  const [section, setSection] = useState("work");
+
+  const getItems = () => {
+    switch (section) {
+      case "about":
+        return ABOUT_ITEMS;
+      case "contact":
+        return CONTACT_ITEMS;
+      case "work":
+      default:
+        return WORK_ITEMS;
+    }
+  };
+
   return (
     <div className="app">
-      <Nav />
+      <Nav setSection={setSection} />
       <Hero />
       <Footer />
+
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-        <Carousel />
+        <Carousel items={getItems()} />
       </Canvas>
     </div>
   );

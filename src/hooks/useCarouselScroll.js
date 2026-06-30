@@ -34,6 +34,11 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
     selectCard(selectedIndex.current - 1);
   }, [selectCard]);
 
+  const reset = () => {
+    scrollOffset.current = 0;
+    selectedIndex.current = 0;
+  };
+
   // wheel input steps the selection by one card at a time, no momentum
   useEffect(() => {
     const dom = gl.domElement;
@@ -101,5 +106,6 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
     selectCard,        // call to select a specific index (e.g. onClick)
     selectNext,
     selectPrev,
+    reset
   };
 }
