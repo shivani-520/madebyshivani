@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture, Html } from "@react-three/drei";
-import { useRef, useState, useMemo } from "react";
+import { useTexture, Html, Text } from "@react-three/drei";
+import { useRef, useState, useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { useCarouselScroll } from "./hooks/useCarouselScroll.js";
 
@@ -12,18 +12,41 @@ const ITEMS = [
     description: "A virtual retail experience built in 3D with interactive product browsing.",
     image: "/images/artwork/Christmas_2019_CGI_001.jpg",
     width: 2.4,
-    height: 1.5
+    height: 1.5,
+    stack: ["Three.js", "JavaScript", "WebGL"]
   },
   {
     title: "Iceland Fridge",
     description: "Concept visualization exploring domestic isolation and cold minimalism.",
     image: "/images/artwork/Dark_Bedroom_001.jpg",
     width: 1.6,
-    height: 2.0
+    height: 1.8,
+    stack: ["Three.js", "Blender", "JavaScript"]
   },
-  { title: "3D Pivotal CGI Website", image: "/images/artwork/Modern_Apartment_Bedroom_001.jpg", width: 3.0, height: 1.5 },
-  { title: "AI Drones", image: "/images/artwork/Pink_Wall_Bedroom_CGI_004.jpg", width: 1.8, height: 1.8 },
-  { title: "O.M.G!", image: "/images/artwork/Saxton_Lane_001_2k.jpg", width: 2.2, height: 1.3 },
+  { 
+    title: "3D Pivotal CGI Website", 
+    description: "Concept visualization exploring domestic isolation and cold minimalism.",
+    image: "/images/artwork/Modern_Apartment_Bedroom_001.jpg", 
+    width: 3.0, 
+    height: 1.5 ,
+    stack: ["React", "React Three Fibre", "JavaScript"]
+  },
+  { 
+    title: "UAV Search & Rescue Simulation", 
+    description: "Multi-Agent Reinforcement Learning for Coordinated UAV Search and Rescue in a Simulated Unity Environment.",
+    image: "/images/artwork/Pink_Wall_Bedroom_CGI_004.jpg", 
+    width: 1.8, 
+    height: 1.8,
+    stack: ["Unity", "C#", "Python"]
+  },
+  { 
+    title: "O.M.G!", 
+    description: "An asymmetrical, couch co-op platformer based on Greek mythology.",
+    image: "/images/artwork/Saxton_Lane_001_2k.jpg", 
+    width: 2.2, 
+    height: 1.3,
+    stack: ["Unity", "C#"]
+  },
 ];
 
 // precompute each card's center offset and the total track width once,
@@ -41,7 +64,7 @@ function useLayout(items) {
   }, [items]);
 }
 
-function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, image, title, description, width, height, onClick }) 
+function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, image, title, description, width, height, onClick, item }) 
 {
   const frontRef = useRef();
   const backRef = useRef();
@@ -161,7 +184,7 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
       >
         <planeGeometry args={[width, height]} />
         <meshBasicMaterial
-          color="#111"
+          color="#222"
           transparent
           opacity={1}
           toneMapped={false}
@@ -171,23 +194,7 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
         {/* BACK TEXT */}
       </mesh>
 
-      {flipped && (
-        <Html
-          center
-          distanceFactor={8}
-          style={{
-            pointerEvents: "none",
-            width: `${width * 100}px`,
-          }}
-        >
-          <div className="card-back">
-            <h3 className="card-back-title">{title}</h3>
-            <p className="card-description">{description}</p>
-          </div>
-        </Html>
-      )}
-
-      {isSelectedState && (
+      {isSelectedState && !flipped && (
         <Html
           key={title}
           position={[0, height / 2 + 0.1, 0]}
@@ -205,6 +212,34 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
                 {letter === " " ? "\u00A0" : letter}
               </span>
             ))}
+          </div>
+        </Html>
+      )}
+
+      {isSelectedState && flipped && (
+        <Html
+          transform
+          position={[0, 0, -0.011]}
+          rotation={[0, Math.PI, 0]}
+          scale={width / 10}
+          style={{ pointerEvents: "none" }}
+          pointerEvents="none"
+        >
+          <div
+            className="card-back"
+            style={{ width: "320px", height: `${320 * (height / width)}px` }}
+          >
+            <h3 className="card-back-title">{title}</h3>
+            {description && <p className="card-back-description">{description}</p>}
+            {item.stack && (
+              <div className="card-back-stack">
+                {item.stack.map((tech) => (
+                  <span key={tech} className="stack-tag">
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </Html>
       )}
@@ -234,18 +269,19 @@ function Carousel()
           width={item.width}
           height={item.height}
           onClick={() => selectCard(i)}
+          item={item}
         />
       ))}
     </group>
   );
 }
 
-function Nav() {
+function Nav() 
+{
   return (
     <nav className="nav">
-      <span className="nav-logo">Shivani Sharma</span>
+      <span className="nav-logo">Made By Shivani</span>
       <div className="nav-right">
-        <a href="shivani.d.sharma@outlook.com" className="nav-email">shivani.d.sharma@outlook.com</a>
         <ul className="nav-links">
           <li><a href="#work">Work</a></li>
           <li><a href="#about">About</a></li>
@@ -257,7 +293,7 @@ function Nav() {
 }
 function Hero() 
 {
-  const words = ["Websites", "Software", "Games", "3D"];
+  const words = ["Websites", "3D", "Software", "Games", "AI"];
 
   return (
     <div className="hero">
@@ -273,12 +309,59 @@ function Hero()
     </div>
   );
 }
+function Footer() 
+{
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      setTime(
+        new Intl.DateTimeFormat("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+          timeZone: "Europe/London",
+        }).format(new Date())
+      );
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <footer className="footer">
+      <span className="footer-left">
+        UK — {time}
+      </span>
+
+      <div className="footer-right">
+        <a
+          href="https://www.linkedin.com/in/shivani-devi-sharma"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          LINKEDIN
+        </a>
+
+        <a href="mailto:shivani.d.sharma@outlook.com">
+          shivani.d.sharma@outlook.com
+        </a>
+      </div>
+    </footer>
+  );
+}
+
 
 export default function App() {
   return (
     <div className="app">
       <Nav />
       <Hero />
+      <Footer />
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
         <Carousel />
       </Canvas>

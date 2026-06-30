@@ -100,7 +100,7 @@ canvas {
   justify-content: center;
   pointer-events: none;
   overflow: hidden;
-  transform: translateY(35vh);
+  transform: translateY(32vh);
 }
 
 .marquee {
@@ -134,6 +134,67 @@ canvas {
 @keyframes marqueeScroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 2rem 3rem;
+
+  font-family: "Space Grotesk", sans-serif;
+
+  pointer-events: none;
+}
+
+.footer-left,
+.footer-right {
+  font-size: 0.875rem;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+  color: #111;
+  pointer-events: auto;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 2rem; /* adjust to taste */
+}
+
+.footer-right a {
+  color: #111;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: bold;
+  transition: opacity 0.25s ease;
+}
+
+.footer-right a:hover {
+  opacity: 0.6;
+}
+
+.nav-links a,
+.footer-right a,
+.nav-email {
+  display: inline-block;
+  transition:
+    transform 0.35s cubic-bezier(.19,1,.22,1),
+    opacity 0.35s ease;
+}
+
+.nav-links a:hover,
+.footer-right a:hover,
+.nav-email:hover {
+  transform: translateY(-2px) scale(1.04);
+  opacity: 0.75;
 }
 
 .card-title {
@@ -176,41 +237,50 @@ canvas {
   }
 }
 
+
 .card-back {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-
-  gap: 10px;              /* ⭐ THIS fixes “squished” feel */
-
-  padding: 20px 18px;
-
   text-align: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  font-family: "Space Grotesk", sans-serif;
 
-  max-width: 240px;
-
-  color: #f5f5f5;
+  pointer-events: none !important;
 }
 
 .card-back-title {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-
-  margin-bottom: 8px;
-
-  color: white;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
 }
 
-.card-description {
-  font-size: 0.78rem;
-  line-height: 1.5;   /* ⭐ BIG improvement */
-
-  opacity: 0.75;
-
-  max-width: 90%;
+.card-back-description {
+  font-size: 0.8rem;
+  font-weight: 300;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
 }
 
+.card-back-stack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
 
-
+.stack-tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+}
