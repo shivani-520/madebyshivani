@@ -1,0 +1,105 @@
+// useCarouselScroll.js
+import { useRef, useCallback, useEffect } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+
+// Drives a carousel's scroll offset, always easing toward a "selected" card.
+// No free-scroll momentum, so it never overshoots before centering.
+//
+// centers:     array of each card's center x position (from your layout calc)
+// totalWidth:  total track width, used for wraparound math
+// options:
+//   snapStrength: how fast it eases toward the selected card (0-1, higher = snappier)
+//   wheelThreshold: how much accumulated wheel delta triggers moving to the next/prev card
+export function useCarouselScroll(centers, totalWidth, options = {}) {
+  const {
+    snapStrength = 0.05,
+    wheelThreshold = 60,
+  } = options;
+
+  const { gl } = useThree();
+
+  const scrollOffset = useRef(0);     // current smoothed scroll position
+  const selectedIndex = useRef(0);    // which card is "selected"
+  const wheelAccum = useRef(0);       // accumulated wheel delta since last step
+
+  const selectCard = useCallback((index) => {
+    selectedIndex.current = ((index % centers.length) + centers.length) % centers.length;
+  }, [centers.length]);
+
+  const selectNext = useCallback(() => {
+    selectCard(selectedIndex.current + 1);
+  }, [selectCard]);
+
+  const selectPrev = useCallback(() => {
+    selectCard(selectedIndex.current - 1);
+  }, [selectCard]);
+
+  // wheel input steps the selection by one card at a time, no momentum
+  useEffect(() => {
+    const dom = gl.domElement;
+
+    const handleWheel = (e) => {
+      wheelAccum.current += e.deltaY;
+
+      if (wheelAccum.current > wheelThreshold) 
+      {
+        selectNext();
+        wheelAccum.current = 0;
+      } 
+      else if (wheelAccum.current < -wheelThreshold) 
+      {
+        selectPrev();
+        wheelAccum.current = 0;
+      }
+    };
+
+    dom.addEventListener("wheel", handleWheel, { passive: true });
+    return () => dom.removeEventListener("wheel", handleWheel);
+  }, [gl, wheelThreshold, selectNext, selectPrev]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // avoid interfering with typing in inputs
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) {
+        return;
+      }
+
+      switch (e.code) {
+        case "ArrowRight":
+        case "KeyD":
+          selectNext();
+          break;
+
+        case "ArrowLeft":
+        case "KeyA":
+          selectPrev();
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectNext, selectPrev]);
+
+  useFrame((state, delta) => {
+    const target = centers[selectedIndex.current];
+    let diff = target - scrollOffset.current;
+    diff = ((diff + totalWidth / 2) % totalWidth + totalWidth) % totalWidth - totalWidth / 2;
+
+    // exponential decay, consistent regardless of frame rate
+    const decay = 1 - Math.pow(1 - snapStrength, delta * 60);
+    scrollOffset.current += diff * decay;
+  });
+
+  return {
+    scrollOffset,      // ref, read this each frame to position cards
+    selectedIndex,     // ref, current selected card index
+    selectCard,        // call to select a specific index (e.g. onClick)
+    selectNext,
+    selectPrev,
+  };
+}
