@@ -1,6 +1,7 @@
 // useCarouselScroll.js
 import { useRef, useCallback, useEffect } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
 
 // Drives a carousel's scroll offset, always easing toward a "selected" card.
 // No free-scroll momentum, so it never overshoots before centering.
@@ -22,8 +23,20 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
   const selectedIndex = useRef(0);    // which card is "selected"
   const wheelAccum = useRef(0);       // accumulated wheel delta since last step
 
+  const scrollDistortion = useRef(0);
+  const lastSelected = useRef(0);
+
+  const triggerDistortion = () => {
+    scrollDistortion.current = 1;
+  };
+
   const selectCard = useCallback((index) => {
-    selectedIndex.current = ((index % centers.length) + centers.length) % centers.length;
+    const next = ((index % centers.length) + centers.length) % centers.length;
+
+    if (next !== selectedIndex.current) {
+      selectedIndex.current = next;
+      triggerDistortion();
+    }
   }, [centers.length]);
 
   const selectNext = useCallback(() => {
@@ -38,6 +51,7 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
     scrollOffset.current = 0;
     selectedIndex.current = 0;
   };
+
 
   // wheel input steps the selection by one card at a time, no momentum
   useEffect(() => {
@@ -92,16 +106,28 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
 
   useFrame((state, delta) => {
     const target = centers[selectedIndex.current];
-    let diff = target - scrollOffset.current;
-    diff = ((diff + totalWidth / 2) % totalWidth + totalWidth) % totalWidth - totalWidth / 2;
 
-    // exponential decay, consistent regardless of frame rate
+    let diff = target - scrollOffset.current;
+    diff =
+      ((diff + totalWidth / 2) % totalWidth + totalWidth) %
+        totalWidth -
+      totalWidth / 2;
+
     const decay = 1 - Math.pow(1 - snapStrength, delta * 60);
     scrollOffset.current += diff * decay;
+
+    // decay distortion
+    scrollDistortion.current = THREE.MathUtils.damp(
+      scrollDistortion.current,
+      0,
+      2,
+      delta
+    );
   });
 
   return {
     scrollOffset,      // ref, read this each frame to position cards
+    scrollDistortion,
     selectedIndex,     // ref, current selected card index
     selectCard,        // call to select a specific index (e.g. onClick)
     selectNext,
