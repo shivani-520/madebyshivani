@@ -3,6 +3,7 @@ import { useTexture, Html, Text } from "@react-three/drei";
 import { useRef, useState, useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { useCarouselScroll } from "./hooks/useCarouselScroll.js";
+import "./components/CardDistortMaterial.js";
 
 const GAP = 2;
 
@@ -98,6 +99,18 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
   const texture = useTexture(image);
   const [flipped, setFlipped] = useState(false);
 
+  const hintPos = useRef(new THREE.Vector3(0, -height / 2 - 0.15, 0.05));
+  const hintGroupRef = useRef();
+  const defaultHintPos = useMemo(
+    () => new THREE.Vector3(0, -height / 2 - 0.15, 0.05),
+    [height]
+  );
+
+  const frontMatRef = useRef();
+  const backMatRef = useRef();
+  const hoverUvRef = useRef(new THREE.Vector2(0.5, 0.5));
+  const hoverStrengthRef = useRef(0);
+
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
@@ -107,24 +120,53 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
 
     const distFromCenter = Math.abs(x);
     const fade = THREE.MathUtils.clamp(1 - (distFromCenter - 3) / 3, 0, 1);
-    const applyOpacity = (ref, value) => {
-      if (ref.current?.material) {
-        ref.current.material.opacity = value;
-      }
-    };
+    const isSelected = index === selectedIndex.current;
 
-    applyOpacity(frontRef, fade);
-    applyOpacity(backRef, fade);
+    if (frontMatRef.current) 
+    {
+      frontMatRef.current.uOpacity = fade;
+      frontMatRef.current.uTime = state.clock.elapsedTime;
+    }
+    if (backMatRef.current) 
+    {
+      backMatRef.current.uOpacity = fade;
+      backMatRef.current.uTime = state.clock.elapsedTime;
+    }
+
+    // ease the hover strength in/out
+    const targetStrength = hovered && isSelected ? 1 : 0;
+    hoverStrengthRef.current = THREE.MathUtils.lerp(
+      hoverStrengthRef.current,
+      targetStrength,
+      0.12
+    );
+    if (frontMatRef.current) 
+    {
+      frontMatRef.current.uHoverStrength = hoverStrengthRef.current;
+      frontMatRef.current.uHoverUv = frontHoverUvRef.current;
+    }
+    if (backMatRef.current) 
+    {
+      backMatRef.current.uHoverStrength = hoverStrengthRef.current;
+      backMatRef.current.uHoverUv = backHoverUvRef.current;
+    }
 
     const EASE = 0.08;
+    const time = state.clock.elapsedTime;
+    const idlePhase = index * 2; // desyncs cards so they don't wobble in unison
 
-    const isSelected = index === selectedIndex.current;
     if (isSelected !== isSelectedState) setIsSelectedState(isSelected);
     if (!isSelected && flipped && !hovered) setFlipped(false);
 
-    const targetRotX = hovered && isSelected ? tilt.current.y * 0.4 : 0;
-    const targetRotY = hovered && isSelected ? tilt.current.x * 0.4 : 0;
+    // idle "invitation to interact" wobble — replaces the flat 0 rest state
+    const idleRotX = Math.sin(time * 0.6 + idlePhase) * 0.05;
+    const idleRotZ = Math.sin(time * 0.4 + idlePhase * 1.3) * 0.035;
+
+    const targetRotX = hovered && isSelected ? tilt.current.y * 0.4 : idleRotX;
+    const targetRotZ = hovered && isSelected ? 0 : idleRotZ;
+
     groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, targetRotX, EASE);
+    groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, targetRotZ, EASE);
 
     let targetScale = isSelected ? 1.15 : 1;
     if (hovered && isSelected) targetScale = 1.22;
@@ -136,7 +178,7 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
     groupRef.current.rotation.y = THREE.MathUtils.damp(
       groupRef.current.rotation.y,
       targetFlipY + (hovered && isSelected ? tilt.current.x * 0.2 : 0),
-      8, // higher = faster spin
+      8,
       delta
     );
 
@@ -144,34 +186,60 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
     if (hovered && isSelected) targetZ += 0.8;
     groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, EASE);
 
+    if (hintGroupRef.current) 
+    {
+      const target = hovered && isSelected ? hintPos.current : defaultHintPos;
+      hintGroupRef.current.position.lerp(target, 0.25);
+    }
+
     if (hovered && !isSelected) setHovered(false);
-    
   });
+
+  const frontHoverUvRef = useRef(new THREE.Vector2(0.5, 0.5));
+  const backHoverUvRef = useRef(new THREE.Vector2(0.5, 0.5));
 
   const handlePointerMove = (e) => {
     if (index !== selectedIndex.current) return;
     tilt.current.x = (e.uv.x - 0.5) * 2;
     tilt.current.y = (e.uv.y - 0.5) * 2;
+
+    // e.eventObject tells us which mesh's event handler fired
+    if (e.eventObject === backRef.current) {
+      backHoverUvRef.current.set(e.uv.x, e.uv.y);
+    } else {
+      frontHoverUvRef.current.set(e.uv.x, e.uv.y);
+    }
+
+    if (groupRef.current) {
+      const localPoint = groupRef.current.worldToLocal(e.point.clone());
+      hintPos.current.set(localPoint.x, localPoint.y, 0.05);
+    }
   };
 
   const handlePointerOver = () => {
+    document.body.style.cursor = "pointer";
     if (index !== selectedIndex.current) return;
     setHovered(true);
   };
 
   const handlePointerOut = () => {
+    document.body.style.cursor = "auto";
     setHovered(false);
   };
 
-  const handleDoubleClick = () => {
-    if (index !== selectedIndex.current) return;
+  const handleCardClick = (e) => {
+    e.stopPropagation();
+
+    if (index !== selectedIndex.current) {
+      onClick(); // select it, as before
+      return;
+    }
     setFlipped((prev) => !prev);
   };
 
   return (
     <group
       ref={groupRef}
-      onDoubleClick={handleDoubleClick}
     >
       
       {/* FRONT */}
@@ -180,17 +248,17 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
         onPointerMove={handlePointerMove}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
-        onClick={onClick}
+        onClick={handleCardClick}
 
       >
-        <planeGeometry args={[width, height]} />
-        <meshBasicMaterial
-          map={texture}
-          transparent
-          opacity={1}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-        />
+        <planeGeometry args={[width, height, 32, 32]} />
+          <cardDistortMaterial
+            ref={frontMatRef}
+            uTexture={texture}
+            transparent
+            toneMapped={false}
+            side={THREE.FrontSide}
+          />
       </mesh>
 
       {/* BACK */}
@@ -201,21 +269,21 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
         onPointerMove={handlePointerMove}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
-        onClick={onClick}
-        onDoubleClick={handleDoubleClick}
+        onClick={handleCardClick}
       >
-        <planeGeometry args={[width, height]} />
-        <meshBasicMaterial
-          color="#222"
-          transparent
-          opacity={1}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-        />
+        <planeGeometry args={[width, height, 32, 32]} />
+          <cardDistortMaterial
+            ref={backMatRef}
+            uUseTexture={false}
+            uColor={new THREE.Color("#666666")}
+            transparent
+            toneMapped={false}
+            side={THREE.FrontSide}
+          />
 
-        {/* BACK TEXT */}
       </mesh>
 
+      {/* TITLE TEXT */}
       {isSelectedState && !flipped && (
         <Html
           key={title}
@@ -238,14 +306,16 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
         </Html>
       )}
 
+      {/* BACK TEXT */}
       {isSelectedState && flipped && (
         <Html
           transform
-          position={[0, 0, -0.011]}
+          position={[0, 0, -0.1]}
           rotation={[0, Math.PI, 0]}
           scale={width / 10}
-          style={{ pointerEvents: "none" }}
+          style={{ pointerEvents: "none", zIndex: 1 }}
           pointerEvents="none"
+          zIndexRange={[100, 10]}   
         >
           <div
             className="card-back"
@@ -264,6 +334,20 @@ function Card({ index, baseCenter, totalWidth, scrollOffset, selectedIndex, imag
             )}
           </div>
         </Html>
+      )}
+
+      {isSelectedState && (
+        <group ref={hintGroupRef} position={defaultHintPos}>
+          <Html
+            center
+            distanceFactor={8}
+            style={{ pointerEvents: "none", zIndex: 999999 }} 
+          >
+            <div className={`flip-hint${hovered ? " flip-hint-visible" : ""}`}>
+              <span>Flip</span>
+            </div>
+          </Html>
+        </group>
       )}
 
     </group>
