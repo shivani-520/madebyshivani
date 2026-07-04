@@ -4,7 +4,7 @@ export const WORK_ITEMS = [
   {
     title: "TG Jones Virtual Store",
     description: "A virtual retail experience built in 3D with interactive product browsing.",
-    image: "/images/artwork/tg jones.webp",
+    image: "/images/artwork/tg-jones.webp",
 
     stack: ["Three.js", "JavaScript", "WebGL"]
   },
@@ -23,7 +23,7 @@ export const WORK_ITEMS = [
   {
     title: "UAV Search & Rescue Simulation",
     description: "Multi-Agent Reinforcement Learning for Coordinated UAV Search and Rescue in a Simulated Unity Environment.",
-    image: "/images/artwork/rl agents.webp",
+    image: "/images/artwork/rl-agents.webp",
     stack: ["Unity", "C#", "Python"]
   },
   {
