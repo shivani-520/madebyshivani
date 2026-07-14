@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture, Html, Text } from "@react-three/drei";
+import { useTexture, Html, Text, Stars } from "@react-three/drei";
 import { useRef, useState, useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { useCarouselScroll } from "./hooks/useCarouselScroll.js";
@@ -875,6 +875,24 @@ function Footer() {
   );
 }
 
+function AnimatedStars() {
+  const ref = useRef();
+
+  useFrame((_, delta) => {
+    ref.current.position.z += delta * 2;
+
+    if (ref.current.position.z > 20) {
+      ref.current.position.z = 0;
+    }
+  });
+
+  return (
+    <group ref={ref}>
+      <Stars radius={50} depth={100} count={1000} factor={4} fade />
+    </group>
+  );
+}
+
 export default function App() {
   const [section, setSection] = useState("work");
 
@@ -884,6 +902,7 @@ export default function App() {
       <Footer />
 
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+        <AnimatedStars />
         {section === "work" && <Carousel items={WORK_ITEMS} />}
         {section === "about" && <AboutCarousel items={ABOUT_ITEMS} />}
       </Canvas>
