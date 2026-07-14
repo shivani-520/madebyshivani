@@ -11,6 +11,14 @@ function getYoutubeThumbnail(url)
 
 export const WORK_ITEMS = [
   {
+    title: "Pivotal CGI Website",
+    description: "A browser-based interactive 3D gallery built for Pivotal CGI, an architectural visualisation studio. Users scroll through and explore a gallery on the home page. Built from scratch and delivered as a deployed project.",
+    stack: ["React", "React Three Fibre", "HTML", "CSS", "Real-time Rendering", "UI/UX"],
+    link: "https://pivotalcgi.com/",
+
+    image: "/images/artwork/pivotal.webp",
+  },
+  {
     title: "TG Jones Virtual Store",
     description: `A browser-based immersive virtual store built using panoramic imagery exported from Realsee.ai, based on the physical TG Jones store in Leeds.`,
     stack: ["Three.js", "JavaScript", "WebGL"],
@@ -26,14 +34,6 @@ export const WORK_ITEMS = [
     link: "https://youtu.be/M5wO_F_BlxQ",
 
     image: getYoutubeThumbnail("https://youtu.be/M5wO_F_BlxQ"),
-  },
-  {
-    title: "Pivotal CGI Website",
-    description: "A browser-based interactive 3D gallery built for Pivotal CGI, an architectural visualisation studio. Users scroll through and explore a gallery on the home page. Built from scratch and delivered as a deployed project.",
-    stack: ["React", "React Three Fibre", "HTML", "CSS", "Real-time Rendering", "UI/UX"],
-    link: "https://pivotalcgi.com/",
-
-    image: "/images/artwork/pivotal.webp",
   },
   {
     title: "UAV Search & Rescue Simulation",
@@ -55,15 +55,10 @@ export const WORK_ITEMS = [
 
 export const ABOUT_ITEMS = [
   {
-    title: "About Me",
-    description: `I’m a creative developer focused on 3D web experiences. I’m a creative developer focused on 3D web experiences.`,
-    image: "/images/me.webp",
-    stack: [
-      "shivani.d.sharma@outlook.com",
-      "linkedin.com/in/shivani-devi-sharma",
-      "github.com/shivani-520"
-    ]
-  }
+    description: `
+      **Web Developer** with **4+ years of experience** building responsive, performant web applications using **React, JavaScript, HTML and CSS**. Proven ability to write clean, reusable code and deliver production-ready projects across a range of client briefs. 
+    `,
+  },
 ];
 
 export const CONTACT_ITEMS = [

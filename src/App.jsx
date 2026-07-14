@@ -60,6 +60,88 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   });
 }
 
+function parseHighlightedText(text) {
+  return text.split("\n").map((paragraph) => {
+    const tokens = [];
+    const parts = paragraph.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+
+    parts.forEach((part) => {
+      const isHighlight = part.startsWith("**") && part.endsWith("**");
+      const clean = isHighlight ? part.slice(2, -2) : part;
+
+      clean
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .forEach((word) => tokens.push({ word, highlight: isHighlight }));
+    });
+
+    return tokens;
+  });
+}
+
+function wrapTextHighlighted(
+  ctx,
+  text,
+  x,
+  y,
+  maxWidth,
+  lineHeight,
+  { normalFont, highlightFont, normalColor, highlightColor },
+) {
+  const paragraphs = parseHighlightedText(text);
+
+  ctx.font = normalFont;
+  const spaceWidth = ctx.measureText(" ").width;
+
+  const lines = [];
+
+  paragraphs.forEach((tokens) => {
+    let currentLine = [];
+    let currentWidth = 0;
+
+    tokens.forEach((t) => {
+      ctx.font = t.highlight ? highlightFont : normalFont;
+      const wWidth = ctx.measureText(t.word).width;
+      const addWidth = currentLine.length ? spaceWidth + wWidth : wWidth;
+
+      if (currentWidth + addWidth > maxWidth && currentLine.length) {
+        lines.push({ tokens: currentLine, width: currentWidth });
+        currentLine = [{ ...t, width: wWidth }];
+        currentWidth = wWidth;
+      } else {
+        currentLine.push({ ...t, width: wWidth });
+        currentWidth += addWidth;
+      }
+    });
+
+    if (currentLine.length)
+      lines.push({ tokens: currentLine, width: currentWidth });
+    lines.push({ tokens: [], width: 0 }); // paragraph gap
+  });
+
+  while (lines.length && lines[lines.length - 1].tokens.length === 0)
+    lines.pop();
+
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  const prevAlign = ctx.textAlign;
+  ctx.textAlign = "left";
+
+  lines.forEach((line, i) => {
+    const lineY = startY + i * lineHeight;
+    let curX = x - line.width / 2;
+
+    line.tokens.forEach((t) => {
+      ctx.font = t.highlight ? highlightFont : normalFont;
+      ctx.fillStyle = t.highlight ? highlightColor : normalColor;
+      ctx.fillText(t.word, curX, lineY);
+      curX += t.width + spaceWidth;
+    });
+  });
+
+  ctx.textAlign = prevAlign;
+}
+
 function useCardBackTexture(
   title,
   description,
@@ -181,7 +263,10 @@ function useTextTexture(
   useEffect(() => {
     let cancelled = false;
 
-    document.fonts.load(`700 ${fontSize}px 'Space Grotesk'`).then(() => {
+    Promise.all([
+      document.fonts.load(`700 ${fontSize}px 'Space Grotesk'`),
+      document.fonts.load(`700 ${fontSize}px 'Space Grotesk'`), // highlight font, same weight here
+    ]).then(() => {
       if (cancelled) return;
 
       const canvas = document.createElement("canvas");
@@ -189,11 +274,22 @@ function useTextTexture(
       canvas.height = height;
       const ctx = canvas.getContext("2d");
 
-      ctx.fillStyle = "rgba(244,242,248,0.68)";
-      ctx.font = `700 ${fontSize}px 'Space Grotesk', sans-serif`;
       ctx.textAlign = "center";
 
-      wrapText(ctx, text, width / 2, height / 2, width * 0.9, fontSize * 1.3);
+      wrapTextHighlighted(
+        ctx,
+        text,
+        width / 2,
+        height / 2,
+        width * 0.9,
+        fontSize * 1.3,
+        {
+          normalFont: `700 ${fontSize}px 'Space Grotesk', sans-serif`,
+          highlightFont: `700 ${fontSize}px 'Space Grotesk', sans-serif`,
+          normalColor: "rgba(244,242,248,0.68)",
+          highlightColor: "#c4b5fd",
+        },
+      );
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.anisotropy = 8;
@@ -545,6 +641,161 @@ function Carousel({ items }) {
   );
 }
 
+function AboutCard({
+  index,
+  baseCenter,
+  totalHeight,
+  scrollOffset,
+  selectedIndex,
+  description,
+  onClick,
+}) {
+  const planeWidth = 2.5;
+  const planeHeight = 1.5;
+
+  const texture = useTextTexture(description, {
+    width: 1024,
+    height: 614,
+    fontSize: 42,
+  });
+
+  const groupRef = useRef();
+  const matRef = useRef();
+  const [hovered, setHovered] = useState(false);
+  const hoverUvRef = useRef(new THREE.Vector2(0.5, 0.5));
+  const hoverStrengthRef = useRef(0);
+  const dimRef = useRef(1);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+
+    let y = baseCenter - scrollOffset.current;
+    y =
+      ((((y + totalHeight / 2) % totalHeight) + totalHeight) % totalHeight) -
+      totalHeight / 2;
+
+    groupRef.current.position.y = -y;
+
+    const distFromCenter = Math.abs(y);
+    const fade = THREE.MathUtils.clamp(1 - (distFromCenter - 3) / 3, 0, 1);
+    const isSelected = index === selectedIndex.current;
+
+    const targetDim = isSelected ? 1 : 0.35;
+    dimRef.current = THREE.MathUtils.lerp(dimRef.current, targetDim, 0.08);
+    const opacity = fade * dimRef.current;
+
+    if (matRef.current) {
+      matRef.current.uOpacity = opacity;
+      matRef.current.uTime = state.clock.elapsedTime;
+
+      const targetStrength = hovered && isSelected ? 1 : 0;
+      hoverStrengthRef.current = THREE.MathUtils.lerp(
+        hoverStrengthRef.current,
+        targetStrength,
+        0.12,
+      );
+      matRef.current.uHoverStrength = hoverStrengthRef.current;
+      matRef.current.uHoverUv = hoverUvRef.current;
+    }
+
+    const EASE = 0.08;
+    let targetScale = isSelected ? 1.7 : 1;
+    if (hovered && isSelected) targetScale = 1.5;
+    groupRef.current.scale.x = THREE.MathUtils.lerp(
+      groupRef.current.scale.x,
+      targetScale,
+      EASE,
+    );
+    groupRef.current.scale.y = THREE.MathUtils.lerp(
+      groupRef.current.scale.y,
+      targetScale,
+      EASE,
+    );
+
+    let targetZ = isSelected ? 1 : 0;
+    if (hovered && isSelected) targetZ += 0.8;
+    groupRef.current.position.z = THREE.MathUtils.lerp(
+      groupRef.current.position.z,
+      targetZ,
+      EASE,
+    );
+
+    if (hovered && !isSelected) setHovered(false);
+  });
+
+  const handlePointerMove = (e) => {
+    if (index !== selectedIndex.current) return;
+    hoverUvRef.current.set(e.uv.x, e.uv.y);
+  };
+
+  const handlePointerOver = () => {
+    document.body.style.cursor = "pointer";
+    if (index !== selectedIndex.current) return;
+    setHovered(true);
+  };
+
+  const handlePointerOut = () => {
+    document.body.style.cursor = "auto";
+    setHovered(false);
+  };
+
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (index !== selectedIndex.current) onClick();
+  };
+
+  return (
+    <group ref={groupRef}>
+      <mesh
+        onPointerMove={handlePointerMove}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+        onClick={handleClick}
+      >
+        <planeGeometry args={[planeWidth, planeHeight, 32, 32]} />
+        <cardDistortMaterial
+          ref={matRef}
+          uTexture={texture}
+          uUseTexture={!!texture}
+          transparent
+          toneMapped={false}
+          side={THREE.FrontSide}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function AboutCarousel({ items }) {
+  const { centers, totalHeight } = useLayout(items);
+
+  const { scrollOffset, selectedIndex, selectCard, reset } = useCarouselScroll(
+    centers,
+    totalHeight,
+  );
+
+  useEffect(() => {
+    reset?.();
+  }, [items, reset]);
+
+  return (
+    <group>
+      {items.map((item, i) => (
+        <AboutCard
+          key={i}
+          index={i}
+          baseCenter={centers[i]}
+          totalHeight={totalHeight}
+          scrollOffset={scrollOffset}
+          selectedIndex={selectedIndex}
+          description={item.description}
+          onClick={() => selectCard(i)}
+        />
+      ))}
+    </group>
+  );
+}
+
 function Nav({ setSection }) {
   return (
     <nav className="nav">
@@ -624,74 +875,6 @@ function Footer() {
   );
 }
 
-function AboutPanel({ item, index }) {
-  const texture = useTextTexture(item.description);
-  const matRef = useRef();
-  const hoverUv = useRef(new THREE.Vector2(0.5, 0.5));
-  const hoverStrength = useRef(0);
-  const [hovered, setHovered] = useState(false);
-
-  const planeWidth = 4.2;
-  const planeHeight = 1.6;
-
-  useFrame((state) => {
-    if (!matRef.current) return;
-
-    const target = hovered ? 1 : 0;
-    hoverStrength.current = THREE.MathUtils.lerp(
-      hoverStrength.current,
-      target,
-      0.1,
-    );
-    matRef.current.uHoverStrength = hoverStrength.current;
-    matRef.current.uHoverUv = hoverUv.current;
-  });
-
-  return (
-    <mesh
-      position={[0, -index * 2.2, 0]}
-      onPointerMove={(e) => hoverUv.current.set(e.uv.x, e.uv.y)}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-    >
-      <planeGeometry args={[planeWidth, planeHeight, 32, 32]} />
-      <cardDistortMaterial
-        ref={matRef}
-        uTexture={texture}
-        uUseTexture={!!texture}
-        transparent
-        toneMapped={false}
-      />
-    </mesh>
-  );
-}
-
-function AboutScene({ items }) {
-  return (
-    <group>
-      {items.map((item, i) => (
-        <AboutPanel key={item.title} item={item} index={i} />
-      ))}
-    </group>
-  );
-}
-
-function AboutText({ items }) {
-  return (
-    <div className="about-wrap">
-      <div className="about-scene">
-        {items.map((item) => (
-          <div className="about-block" key={item.title}>
-            {item.description && (
-              <p className="about-description">{item.description}</p>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const [section, setSection] = useState("work");
 
@@ -702,7 +885,7 @@ export default function App() {
 
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
         {section === "work" && <Carousel items={WORK_ITEMS} />}
-        {section === "about" && <AboutScene items={ABOUT_ITEMS} />}
+        {section === "about" && <AboutCarousel items={ABOUT_ITEMS} />}
       </Canvas>
 
       <div className="vignette-overlay" />
