@@ -12,7 +12,7 @@ body {
   overflow: hidden;
   color: white;
   font-family: "Space Grotesk", sans-serif;
-  background: #f4f4f4; 
+  background: rgb(39, 39, 43); 
 }
 
 canvas {
@@ -29,6 +29,18 @@ canvas {
   height: 100vh;
   position: relative;
   font-family: "Space Grotesk", sans-serif;
+}
+
+.vignette-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  z-index: 3; /* above canvas, below any UI that needs interaction */
 }
 
 .flip-hint {
@@ -91,7 +103,7 @@ canvas {
   font-size: 0.875rem;
   font-weight: bold;
   letter-spacing: 0.02em;
-  color: #111;
+  color: #ccc;
   pointer-events: auto;
 }
 
@@ -108,7 +120,7 @@ canvas {
   font-weight: bold;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #111;
+  color: #ccc;
   text-decoration: none;
   transition: opacity 0.25s ease;
   pointer-events: auto;
@@ -129,7 +141,7 @@ canvas {
   font-weight: bold;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: #111;
+  color: #ccc;
   text-decoration: none;
   transition: opacity 0.25s ease;
   pointer-events: auto;
@@ -164,7 +176,7 @@ canvas {
   font-size: clamp(4rem, 12vw, 11rem);
   line-height: 0.85;
   letter-spacing: -0.03em;
-  color: rgba(17, 17, 17, 0.2);
+  color: rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   animation: marqueeScroll 20s linear infinite;
 }
@@ -207,7 +219,7 @@ canvas {
   font-size: 0.875rem;
   font-weight: bold;
   letter-spacing: 0.02em;
-  color: #111;
+  color: #ccc;
   pointer-events: auto;
 }
 
@@ -218,7 +230,7 @@ canvas {
 }
 
 .footer-right a {
-  color: #111;
+  color: #ccc;
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: bold;
@@ -254,7 +266,7 @@ canvas {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #111;
+  color: #ccc;
   overflow: hidden;
 }
 
@@ -292,26 +304,55 @@ canvas {
   justify-content: center;
   align-items: center;
   text-align: center;
-  gap: 0.75rem;
-  padding: 1.5rem;
+  gap: 0.85rem;
+  padding: 2rem 1.75rem;
   font-family: "Space Grotesk", sans-serif;
-
+  position: relative;
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(139, 92, 246, 0.12),
+    transparent 60%
+  ),
+  #1a1620;
+  border: 1px solid rgba(139, 92, 246, 0.18);
   pointer-events: none !important;
 }
 
+.card-back::before {
+  content: "";
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2.5rem;
+  height: 2px;
+  background: #8b5cf6;
+  border-radius: 999px;
+}
+
+.card-back-kicker {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8b5cf6;
+  margin-top: 0.5rem;
+}
+
 .card-back-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #fff;
+  color: #f4f2f8;
 }
 
 .card-back-description {
   font-size: 0.8rem;
   font-weight: 300;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  color: rgba(244, 242, 248, 0.6);
+  max-width: 240px;
 }
 
 .card-back-stack {
@@ -319,16 +360,85 @@ canvas {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.5rem;
-  margin-top: 0.25rem;
+  margin-top: 0.4rem;
 }
 
 .stack-tag {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.08);
   border-radius: 999px;
-  padding: 0.25rem 0.7rem;
+  padding: 0.3rem 0.75rem;
 }
+
+.card-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+  padding: 0 1.4rem;
+  background: rgba(17, 17, 17, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.25s ease,
+    transform 0.25s cubic-bezier(.19,1,.22,1);
+}
+
+.card-view-btn:hover {
+  background: rgba(17, 17, 17, 0.8);
+  transform: translateY(-2px) scale(1.04);
+}
+
+
+.about-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1400px;
+  pointer-events: none;
+}
+
+.about-scene {
+  transform-style: preserve-3d;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  max-width: 640px;
+  padding: 2rem;
+  text-align: center;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
+
+.about-block {
+  transform: translateZ(40px);
+}
+
+.about-description {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: bold;
+  font-size: 4rem;
+  line-height: 1.7;
+  color: rgba(244, 242, 248, 0.65);
+  transform: translateZ(20px);
+}
+
+

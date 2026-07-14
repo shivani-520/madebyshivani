@@ -13,7 +13,7 @@ import * as THREE from "three";
 //   wheelThreshold: how much accumulated wheel delta triggers moving to the next/prev card
 export function useCarouselScroll(centers, totalWidth, options = {}) {
   const {
-    snapStrength = 0.05,
+    snapStrength = 0.04,
     wheelThreshold = 60,
   } = options;
 

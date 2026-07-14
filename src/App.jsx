@@ -6,43 +6,213 @@ import { useCarouselScroll } from "./hooks/useCarouselScroll.js";
 import "./components/CardDistortMaterial.js";
 import { WORK_ITEMS, ABOUT_ITEMS, CONTACT_ITEMS } from "./data/items.js";
 
-const GAP = 2;
+const GAP = 0.5;
 const BASE_HEIGHT = 1.6;
 
-// precompute each card's center offset and the total track width once,
-// so spacing stays visually consistent regardless of card size
-function useLayout(items, textures) {
+function useLayout(items) {
   return useMemo(() => {
-    if (!textures || textures.length === 0) {
-      return { centers: [], totalWidth: 0 };
-    }
-
     let cursor = 0;
 
-    const centers = items.map((item, i) => {
-      const img = textures[i]?.image;
-
-      const aspect = img?.width && img?.height ? img.width / img.height : 1;
-
-      const width = BASE_HEIGHT * aspect;
-
-      const center = cursor + width / 2;
-      cursor += width + GAP;
-
+    const centers = items.map(() => {
+      const center = cursor + BASE_HEIGHT / 2;
+      cursor += BASE_HEIGHT + GAP;
       return center;
     });
 
     return {
       centers,
-      totalWidth: cursor,
+      totalHeight: cursor,
     };
-  }, [items, textures]);
+  }, [items]);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const paragraphs = text.split("\n");
+  let lines = [];
+
+  paragraphs.forEach((paragraph) => {
+    const words = paragraph.trim().split(" ");
+    let line = "";
+
+    for (const word of words) {
+      const test = line + word + " ";
+
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line.trim());
+        line = word + " ";
+      } else {
+        line = test;
+      }
+    }
+
+    if (line.trim()) {
+      lines.push(line.trim());
+    }
+
+    // add empty line between paragraphs
+    lines.push("");
+  });
+
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+
+  lines.forEach((l, i) => {
+    ctx.fillText(l, x, startY + i * lineHeight);
+  });
+}
+
+function useCardBackTexture(
+  title,
+  description,
+  stack,
+  width = 1024,
+  height = 614,
+) {
+  const [texture, setTexture] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // wait for the web font to actually be ready before drawing,
+    // otherwise the first paint falls back to a system font
+    document.fonts.load("600 40px 'Space Grotesk'").then(() => {
+      document.fonts.load("300 26px 'Space Grotesk'").then(() => {
+        if (cancelled) return;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+
+        // background
+        const grad = ctx.createRadialGradient(
+          width / 2,
+          0,
+          0,
+          width / 2,
+          0,
+          width * 0.6,
+        );
+        grad.addColorStop(0, "rgba(139,92,246,0.5)");
+        grad.addColorStop(1, "#1a1620");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = "rgba(139,92,246,0.35)";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(1.5, 1.5, width - 3, height - 3);
+
+        // accent line
+        ctx.fillStyle = "#8b5cf6";
+        ctx.fillRect(width / 2 - 40, 50, 80, 4);
+
+        ctx.textAlign = "center";
+
+        // title
+        ctx.fillStyle = "#f4f2f8";
+        ctx.font = "600 40px 'Space Grotesk', sans-serif";
+        ctx.fillText(title.toUpperCase(), width / 2, 165);
+
+        // description
+        if (description) {
+          ctx.fillStyle = "rgba(244,242,248,0.62)";
+          ctx.font = "300 26px 'Space Grotesk', sans-serif";
+          wrapText(
+            ctx,
+            description,
+            width / 2,
+            height / 2 + 20,
+            width * 0.75,
+            36,
+          );
+        }
+
+        // stack tags (simple centered row)
+        if (stack?.length) {
+          ctx.font = "600 20px 'Space Grotesk', sans-serif";
+          const padX = 22;
+          const gap = 16;
+          const tagH = 44;
+          const widths = stack.map(
+            (t) => ctx.measureText(t.toUpperCase()).width + padX * 2,
+          );
+          const totalW =
+            widths.reduce((a, b) => a + b, 0) + gap * (stack.length - 1);
+          let x = width / 2 - totalW / 2;
+          const y = height - 90;
+
+          stack.forEach((t, i) => {
+            const w = widths[i];
+            ctx.strokeStyle = "rgba(139,92,246,0.5)";
+            ctx.fillStyle = "rgba(139,92,246,0.1)";
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, tagH, tagH / 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#c4b5fd";
+            ctx.textAlign = "center";
+            ctx.fillText(t.toUpperCase(), x + w / 2, y + tagH / 2 + 7);
+
+            x += w + gap;
+          });
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.anisotropy = 8;
+        tex.needsUpdate = true;
+        setTexture(tex);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [title, description, stack, width, height]);
+
+  return texture;
+}
+
+function useTextTexture(
+  text,
+  { width = 1024, height = 350, fontSize = 45 } = {},
+) {
+  const [texture, setTexture] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    document.fonts.load(`700 ${fontSize}px 'Space Grotesk'`).then(() => {
+      if (cancelled) return;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+
+      ctx.fillStyle = "rgba(244,242,248,0.68)";
+      ctx.font = `700 ${fontSize}px 'Space Grotesk', sans-serif`;
+      ctx.textAlign = "center";
+
+      wrapText(ctx, text, width / 2, height / 2, width * 0.9, fontSize * 1.3);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.anisotropy = 8;
+      tex.needsUpdate = true;
+      setTexture(tex);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [text, width, height, fontSize]);
+
+  return texture;
 }
 
 function Card({
   index,
   baseCenter,
-  totalWidth,
+  totalHeight,
   scrollOffset,
   scrollDistortion,
   selectedIndex,
@@ -59,8 +229,13 @@ function Card({
     return img.width / img.height;
   }, [texture]);
 
-  const planeWidth = BASE_HEIGHT * aspect;
-  const planeHeight = BASE_HEIGHT;
+  // const planeWidth = BASE_HEIGHT * aspect;
+  // const planeHeight = BASE_HEIGHT;
+
+  const backTexture = useCardBackTexture(title, description, item.stack);
+
+  const planeWidth = 2.5;
+  const planeHeight = 1.5;
 
   const frontRef = useRef();
   const backRef = useRef();
@@ -82,26 +257,34 @@ function Card({
   const backMatRef = useRef();
   const hoverUvRef = useRef(new THREE.Vector2(0.5, 0.5));
   const hoverStrengthRef = useRef(0);
+  const dimRef = useRef(1);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
-    let x = baseCenter - scrollOffset.current;
-    x =
-      ((((x + totalWidth / 2) % totalWidth) + totalWidth) % totalWidth) -
-      totalWidth / 2;
-    groupRef.current.position.x = x;
+    let y = baseCenter - scrollOffset.current;
 
-    const distFromCenter = Math.abs(x);
+    y =
+      ((((y + totalHeight / 2) % totalHeight) + totalHeight) % totalHeight) -
+      totalHeight / 2;
+
+    groupRef.current.position.y = -y;
+
+    const distFromCenter = Math.abs(y);
     const fade = THREE.MathUtils.clamp(1 - (distFromCenter - 3) / 3, 0, 1);
     const isSelected = index === selectedIndex.current;
 
+    // NEW: ease opacity down for unselected cards
+    const targetDim = isSelected ? 1 : 0.35; // tweak 0.35 to taste
+    dimRef.current = THREE.MathUtils.lerp(dimRef.current, targetDim, 0.08);
+    const opacity = fade * dimRef.current;
+
     if (frontMatRef.current) {
-      frontMatRef.current.uOpacity = fade;
+      frontMatRef.current.uOpacity = opacity;
       frontMatRef.current.uTime = state.clock.elapsedTime;
     }
     if (backMatRef.current) {
-      backMatRef.current.uOpacity = fade;
+      backMatRef.current.uOpacity = opacity;
       backMatRef.current.uTime = state.clock.elapsedTime;
     }
 
@@ -121,41 +304,25 @@ function Card({
       backMatRef.current.uHoverUv = backHoverUvRef.current;
     }
 
-    if (frontMatRef.current) {
-      frontMatRef.current.uScrollDistortion = scrollDistortion.current;
-    }
-
-    if (backMatRef.current) {
-      backMatRef.current.uScrollDistortion = scrollDistortion.current;
-    }
-
     const EASE = 0.08;
-    const time = state.clock.elapsedTime;
-    const idlePhase = index * 2; // desyncs cards so they don't wobble in unison
 
     if (isSelected !== isSelectedState) setIsSelectedState(isSelected);
     if (!isSelected && flipped && !hovered) setFlipped(false);
 
-    // idle "invitation to interact" wobble — replaces the flat 0 rest state
-    const idleRotX = Math.sin(time * 0.6 + idlePhase) * 0.05;
-    const idleRotZ = Math.sin(time * 0.4 + idlePhase * 1.3) * 0.035;
-
-    const targetRotX = hovered && isSelected ? tilt.current.y * 0.4 : idleRotX;
-    const targetRotZ = hovered && isSelected ? 0 : idleRotZ;
-
+    // no idle wobble, no hover tilt — cards stay flat/straight always
     groupRef.current.rotation.x = THREE.MathUtils.lerp(
       groupRef.current.rotation.x,
-      targetRotX,
+      0,
       EASE,
     );
     groupRef.current.rotation.z = THREE.MathUtils.lerp(
       groupRef.current.rotation.z,
-      targetRotZ,
+      0,
       EASE,
     );
 
-    let targetScale = isSelected ? 1.15 : 1;
-    if (hovered && isSelected) targetScale = 1.22;
+    let targetScale = isSelected ? 1.7 : 1;
+    if (hovered && isSelected) targetScale = 1.5;
     groupRef.current.scale.x = THREE.MathUtils.lerp(
       groupRef.current.scale.x,
       targetScale,
@@ -257,8 +424,8 @@ function Card({
       {/* BACK */}
       <mesh
         ref={backRef}
-        position={[0, 0, -0.01]} // IMPORTANT: same position
-        rotation={[0, Math.PI, 0]} // flips the back side properly
+        position={[0, 0, -0.01]}
+        rotation={[0, Math.PI, 0]}
         onPointerMove={handlePointerMove}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
@@ -267,8 +434,8 @@ function Card({
         <planeGeometry args={[planeWidth, planeHeight, 32, 32]} />
         <cardDistortMaterial
           ref={backMatRef}
-          uUseTexture={false}
-          uColor={new THREE.Color("#666666")}
+          uTexture={backTexture}
+          uUseTexture={!!backTexture}
           transparent
           toneMapped={false}
           side={THREE.FrontSide}
@@ -298,38 +465,7 @@ function Card({
         </Html>
       )}
 
-      {/* BACK TEXT */}
-      {isSelectedState && flipped && (
-        <Html
-          transform
-          position={[0, 0, -0.1]}
-          rotation={[0, Math.PI, 0]}
-          scale={planeWidth / 10}
-          style={{ pointerEvents: "none", zIndex: 1 }}
-          pointerEvents="none"
-          zIndexRange={[100, 10]}
-        >
-          <div
-            className="card-back"
-            style={{ width: "320px", height: `${320 / aspect}px` }}
-          >
-            <h3 className="card-back-title">{title}</h3>
-            {description && (
-              <p className="card-back-description">{description}</p>
-            )}
-            {item.stack && (
-              <div className="card-back-stack">
-                {item.stack.map((tech) => (
-                  <span key={tech} className="stack-tag">
-                    {tech}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </Html>
-      )}
-
+      {/* FLIP HINT BUTTON */}
       {isSelectedState && (
         <group ref={hintGroupRef} position={defaultHintPos}>
           <Html
@@ -343,6 +479,26 @@ function Card({
           </Html>
         </group>
       )}
+
+      {/* VIEW BUTTON */}
+      {isSelectedState && item.link && (
+        <Html
+          position={[0, -planeHeight / 2 - 0.15, 0]}
+          center
+          distanceFactor={8}
+          style={{ pointerEvents: "auto" }}
+        >
+          <button
+            className="card-view-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(item.link, "_blank", "noopener,noreferrer");
+            }}
+          >
+            View
+          </button>
+        </Html>
+      )}
     </group>
   );
 }
@@ -352,7 +508,7 @@ function Carousel({ items }) {
 
   const ready = textures?.every((t) => t?.image);
 
-  const { centers, totalWidth } = useLayout(
+  const { centers, totalHeight } = useLayout(
     ready ? items : [],
     ready ? textures : [],
   );
@@ -360,7 +516,7 @@ function Carousel({ items }) {
   if (!ready) return null; // or a loader
 
   const { scrollOffset, scrollDistortion, selectedIndex, selectCard, reset } =
-    useCarouselScroll(centers, totalWidth);
+    useCarouselScroll(centers, totalHeight);
 
   useEffect(() => {
     reset?.();
@@ -373,7 +529,7 @@ function Carousel({ items }) {
           key={item.title} // also important (see below)
           index={i}
           baseCenter={centers[i]}
-          totalWidth={totalWidth}
+          totalHeight={totalHeight}
           scrollOffset={scrollOffset}
           selectedIndex={selectedIndex}
           image={item.image}
@@ -401,9 +557,6 @@ function Nav({ setSection }) {
           </li>
           <li>
             <a onClick={() => setSection("about")}>About</a>
-          </li>
-          <li>
-            <a onClick={() => setSection("contact")}>Contact</a>
           </li>
         </ul>
       </div>
@@ -458,6 +611,7 @@ function Footer() {
           href="https://www.linkedin.com/in/shivani-devi-sharma"
           target="_blank"
           rel="noopener noreferrer"
+          style={{ textDecoration: "underline" }}
         >
           LINKEDIN
         </a>
@@ -470,26 +624,88 @@ function Footer() {
   );
 }
 
+function AboutPanel({ item, index }) {
+  const texture = useTextTexture(item.description);
+  const matRef = useRef();
+  const hoverUv = useRef(new THREE.Vector2(0.5, 0.5));
+  const hoverStrength = useRef(0);
+  const [hovered, setHovered] = useState(false);
+
+  const planeWidth = 4.2;
+  const planeHeight = 1.6;
+
+  useFrame((state) => {
+    if (!matRef.current) return;
+
+    const target = hovered ? 1 : 0;
+    hoverStrength.current = THREE.MathUtils.lerp(
+      hoverStrength.current,
+      target,
+      0.1,
+    );
+    matRef.current.uHoverStrength = hoverStrength.current;
+    matRef.current.uHoverUv = hoverUv.current;
+  });
+
+  return (
+    <mesh
+      position={[0, -index * 2.2, 0]}
+      onPointerMove={(e) => hoverUv.current.set(e.uv.x, e.uv.y)}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      <planeGeometry args={[planeWidth, planeHeight, 32, 32]} />
+      <cardDistortMaterial
+        ref={matRef}
+        uTexture={texture}
+        uUseTexture={!!texture}
+        transparent
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+function AboutScene({ items }) {
+  return (
+    <group>
+      {items.map((item, i) => (
+        <AboutPanel key={item.title} item={item} index={i} />
+      ))}
+    </group>
+  );
+}
+
+function AboutText({ items }) {
+  return (
+    <div className="about-wrap">
+      <div className="about-scene">
+        {items.map((item) => (
+          <div className="about-block" key={item.title}>
+            {item.description && (
+              <p className="about-description">{item.description}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [section, setSection] = useState("work");
-
-  const ITEMS = {
-    work: WORK_ITEMS,
-    about: ABOUT_ITEMS,
-    contact: CONTACT_ITEMS,
-  };
-
-  const getItems = () => ITEMS[section] ?? WORK_ITEMS;
 
   return (
     <div className="app">
       <Nav setSection={setSection} />
-      <Hero />
       <Footer />
 
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-        <Carousel items={getItems()} />
+        {section === "work" && <Carousel items={WORK_ITEMS} />}
+        {section === "about" && <AboutScene items={ABOUT_ITEMS} />}
       </Canvas>
+
+      <div className="vignette-overlay" />
     </div>
   );
 }

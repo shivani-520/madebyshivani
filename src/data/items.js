@@ -1,45 +1,68 @@
+function getYoutubeThumbnail(url) 
+{
+  const id = url.split("v=")[1]?.split("&")[0] || url.split("be/")[1];
+
+  return id
+    ? `https://img.youtube.com/vi/${id}/maxresdefault.jpg`
+    : null;
+}
+
 // src/data/items.js
 
 export const WORK_ITEMS = [
   {
     title: "TG Jones Virtual Store",
-    description: "A virtual retail experience built in 3D with interactive product browsing.",
-    image: "/images/artwork/tg-jones.webp",
+    description: `A browser-based immersive virtual store built using panoramic imagery exported from Realsee.ai, based on the physical TG Jones store in Leeds.`,
+    stack: ["Three.js", "JavaScript", "WebGL"],
+    link: "https://youtu.be/EdmsvKvTHqY",
 
-    stack: ["Three.js", "JavaScript", "WebGL"]
+    image: getYoutubeThumbnail("https://youtu.be/EdmsvKvTHqY"),
+
   },
   {
     title: "Iceland Fridge",
     description: "Concept visualization exploring domestic isolation and cold minimalism.",
-    image: "/images/artwork/iceland.webp",
-    stack: ["Three.js", "Blender", "JavaScript"]
+    stack: ["Three.js", "Blender", "JavaScript"],
+    link: "https://youtu.be/M5wO_F_BlxQ",
+
+    image: getYoutubeThumbnail("https://youtu.be/M5wO_F_BlxQ"),
   },
   {
-    title: "Pivotal CGI Architecture Website",
+    title: "Pivotal CGI Website",
     description: "A browser-based interactive 3D gallery built for Pivotal CGI, an architectural visualisation studio. Users scroll through and explore a gallery on the home page. Built from scratch and delivered as a deployed project.",
+    stack: ["React", "React Three Fibre", "HTML", "CSS", "Real-time Rendering", "UI/UX"],
+    link: "https://pivotalcgi.com/",
+
     image: "/images/artwork/pivotal.webp",
-    stack: ["React", "React Three Fibre", "HTML", "CSS", "WebGL, Real-time Rendering", "UI/UX"]
   },
   {
     title: "UAV Search & Rescue Simulation",
     description: "Multi-Agent Reinforcement Learning for Coordinated UAV Search and Rescue in a Simulated Unity Environment.",
-    image: "/images/artwork/rl-agents.webp",
-    stack: ["Unity", "C#", "Python"]
+    stack: ["Unity", "C#", "Python"],
+    link: "https://github.com/shivani-520/Final-Project-MARL",
+
+    image: getYoutubeThumbnail("https://youtu.be/qE55VwkYWng"),
   },
   {
     title: "Games",
     description: "An asymmetrical, couch co-op platformer based on Greek mythology.",
+    stack: ["Unity", "C#"],
+    link: "https://shivani-520.itch.io/",
+
     image: "/images/artwork/games.webp",
-    stack: ["Unity", "C#"]
   },
 ];
 
 export const ABOUT_ITEMS = [
   {
     title: "About Me",
-    description: "I’m a creative developer focused on 3D web experiences.",
+    description: `I’m a creative developer focused on 3D web experiences. I’m a creative developer focused on 3D web experiences.`,
     image: "/images/me.webp",
-    stack: ["React", "Three.js", "Creative Coding"]
+    stack: [
+      "shivani.d.sharma@outlook.com",
+      "linkedin.com/in/shivani-devi-sharma",
+      "github.com/shivani-520"
+    ]
   }
 ];
 
