@@ -14,17 +14,21 @@ import * as THREE from "three";
 export function useCarouselScroll(centers, totalWidth, options = {}) {
   const {
     snapStrength = 0.04,
-    wheelThreshold = 60,
+    wheelThreshold = 180,
   } = options;
 
   const { gl } = useThree();
 
   const scrollOffset = useRef(0);     // current smoothed scroll position
+  const velocity = useRef(0);
   const selectedIndex = useRef(0);    // which card is "selected"
   const wheelAccum = useRef(0);       // accumulated wheel delta since last step
 
   const scrollDistortion = useRef(0);
   const lastSelected = useRef(0);
+
+  const lastScroll = useRef(0);
+  const SCROLL_DELAY = 250; // ms
 
   const triggerDistortion = () => {
     scrollDistortion.current = 1;
@@ -58,17 +62,22 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
     const dom = gl.domElement;
 
     const handleWheel = (e) => {
+      const now = performance.now();
+
+      if (now - lastScroll.current < SCROLL_DELAY) return;
+
       wheelAccum.current += e.deltaY;
 
-      if (wheelAccum.current > wheelThreshold) 
-      {
+      if (wheelAccum.current > wheelThreshold) {
         selectNext();
         wheelAccum.current = 0;
-      } 
-      else if (wheelAccum.current < -wheelThreshold) 
-      {
+        lastScroll.current = now;
+      }
+
+      if (wheelAccum.current < -wheelThreshold) {
         selectPrev();
         wheelAccum.current = 0;
+        lastScroll.current = now;
       }
     };
 
@@ -105,6 +114,10 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
   }, [selectNext, selectPrev]);
 
   useFrame((state, delta) => {
+
+    const stiffness = 18;
+    const damping = 8;
+
     const target = centers[selectedIndex.current];
 
     let diff = target - scrollOffset.current;
@@ -113,8 +126,10 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
         totalWidth -
       totalWidth / 2;
 
-    const decay = 1 - Math.pow(1 - snapStrength, delta * 60);
-    scrollOffset.current += diff * decay;
+    velocity.current += diff * stiffness * delta;
+    velocity.current *= Math.exp(-damping * delta);
+
+    scrollOffset.current += velocity.current * delta;
 
     // decay distortion
     scrollDistortion.current = THREE.MathUtils.damp(
