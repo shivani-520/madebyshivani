@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { useCarouselScroll } from "./hooks/useCarouselScroll.js";
 import "./components/CardDistortMaterial.js";
 import { WORK_ITEMS, ABOUT_ITEMS, CONTACT_ITEMS } from "./data/items.js";
+import LoadingScreen from "./components/LoadingScreen.jsx";
 
 const GAP = 0.5;
 const BASE_HEIGHT = 1.6;
@@ -898,6 +899,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <LoadingScreen />
       <Nav setSection={setSection} />
       <Footer />
 
