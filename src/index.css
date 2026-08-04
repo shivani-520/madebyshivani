@@ -469,3 +469,54 @@ canvas {
   letter-spacing: 0.15em;
   color: rgba(196, 181, 253, 0.7);
 }
+
+@media (max-width: 768px) {
+  .nav {
+    padding: 1.25rem 1.25rem;
+  }
+
+  .nav-right {
+    gap: 1.5rem;
+  }
+
+  .nav-links {
+    gap: 1.25rem;
+  }
+
+  .nav-links a {
+    font-size: 0.65rem;
+  }
+
+  .footer {
+    padding: 1.25rem 1.25rem;
+  }
+
+  .footer-right {
+    gap: 1rem;
+  }
+
+  .footer-right a,
+  .footer-left {
+    font-size: 0.65rem;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+  }
+
+  .card-view-btn {
+    height: 2.75rem;
+    padding: 0 1.2rem;
+    font-size: 0.65rem;
+  }
+
+  .flip-hint {
+    height: 2.5rem;
+    min-width: 2.5rem;
+  }
+
+  .card-back-description {
+    max-width: 200px;
+    font-size: 0.72rem;
+  }
+}

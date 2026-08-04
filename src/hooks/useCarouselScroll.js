@@ -113,6 +113,53 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectNext, selectPrev]);
 
+  // touch input steps the selection the same way wheel does — one card per swipe
+  useEffect(() => {
+    const dom = gl.domElement;
+
+    let touchStartY = 0;
+    let touchDelta = 0;
+
+    const handleTouchStart = (e) => {
+      touchStartY = e.touches[0].clientY;
+      touchDelta = 0;
+    };
+
+    const handleTouchMove = (e) => {
+      const currentY = e.touches[0].clientY;
+      touchDelta = touchStartY - currentY; // positive = swiping up
+    };
+
+    const handleTouchEnd = () => {
+      const now = performance.now();
+      if (now - lastScroll.current < SCROLL_DELAY) {
+        touchDelta = 0;
+        return;
+      }
+
+      // reuse wheelThreshold so swipe sensitivity matches wheel sensitivity
+      if (touchDelta > wheelThreshold * 0.5) {
+        selectNext();
+        lastScroll.current = now;
+      } else if (touchDelta < -wheelThreshold * 0.5) {
+        selectPrev();
+        lastScroll.current = now;
+      }
+
+      touchDelta = 0;
+    };
+
+    dom.addEventListener("touchstart", handleTouchStart, { passive: true });
+    dom.addEventListener("touchmove", handleTouchMove, { passive: true });
+    dom.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      dom.removeEventListener("touchstart", handleTouchStart);
+      dom.removeEventListener("touchmove", handleTouchMove);
+      dom.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [gl, wheelThreshold, selectNext, selectPrev]);
+
   useFrame((state, delta) => {
 
     const stiffness = 18;
@@ -123,7 +170,7 @@ export function useCarouselScroll(centers, totalWidth, options = {}) {
     let diff = target - scrollOffset.current;
     diff =
       ((diff + totalWidth / 2) % totalWidth + totalWidth) %
-        totalWidth -
+      totalWidth -
       totalWidth / 2;
 
     velocity.current += diff * stiffness * delta;

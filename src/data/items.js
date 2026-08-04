@@ -1,5 +1,4 @@
-function getYoutubeThumbnail(url) 
-{
+function getYoutubeThumbnail(url) {
   const id = url.split("v=")[1]?.split("&")[0] || url.split("be/")[1];
 
   return id
@@ -30,7 +29,7 @@ export const WORK_ITEMS = [
     title: "TG Jones Virtual Store",
     description: `A browser-based immersive virtual store built using panoramic imagery exported from Realsee.ai, based on the physical TG Jones store in Leeds.`,
     stack: ["Three.js", "JavaScript", "HTML & CSS", "WebGL"],
-    link: "https://youtu.be/EdmsvKvTHqY",
+    link: "https://tgjonesdemo.vercel.app/preview.html",
 
     image: getYoutubeThumbnail("https://youtu.be/EdmsvKvTHqY"),
 
@@ -61,7 +60,7 @@ export const WORK_ITEMS = [
   },
   {
     title: "Games & Personal Projects",
-    description: "A selection of games I've developed during my studies and in my own time, highlighting my passion for creating engaging gameplay and interactive experiences.",    
+    description: "A selection of games I've developed during my studies and in my own time, highlighting my passion for creating engaging gameplay and interactive experiences.",
     stack: ["Unity", "C#", "Unreal Engine", "Blueprints"],
     link: "https://shivani-520.itch.io/",
 

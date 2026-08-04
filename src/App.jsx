@@ -10,6 +10,24 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 const GAP = 0.5;
 const BASE_HEIGHT = 1.6;
 
+function ResponsiveCamera() 
+{
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    const aspect = size.width / size.height;
+    // widen the FOV on narrow/portrait screens so cards stay in frame
+    const targetFov = aspect < 1 ? 60 : 45;
+    const targetZ = aspect < 1 ? 10 : 6;
+
+    camera.fov = targetFov;
+    camera.position.z = targetZ;
+    camera.updateProjectionMatrix();
+  }, [size, camera]);
+
+  return null;
+}
+
 function useLayout(items) {
   return useMemo(() => {
     let cursor = 0;
@@ -860,7 +878,7 @@ function Footer() {
 
       <div className="footer-right">
         <a
-          href="https://www.linkedin.com/in/shivani-devi-sharma"
+          href="https://www.linkedin.com/in/shivani-sharma-7b056a2a8"
           target="_blank"
           rel="noopener noreferrer"
           style={{ textDecoration: "underline" }}
@@ -904,6 +922,7 @@ export default function App() {
       <Footer />
 
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+        <ResponsiveCamera />
         <AnimatedStars />
         {section === "work" && <Carousel items={WORK_ITEMS} />}
         {section === "about" && <AboutCarousel items={ABOUT_ITEMS} />}
