@@ -18,6 +18,14 @@ async function getVimeoThumbnail(url) {
 
 export const WORK_ITEMS = [
   {
+    title: "Games & Personal Projects",
+    description: "A selection of games I've developed during my studies and in my own time, highlighting my passion for creating engaging gameplay and interactive experiences.",
+    stack: ["Unity", "C#", "Unreal Engine", "Blueprints"],
+    link: "https://shivani-520.itch.io/",
+
+    image: "/images/artwork/games.webp",
+  },
+  {
     title: "Pivotal CGI Website",
     description: "A browser-based interactive 3D gallery built for Pivotal CGI, an architectural visualisation studio. Users scroll through and explore a gallery on the home page. Built from scratch and delivered as a deployed project.",
     stack: ["React", "React Three Fibre", "HTML", "CSS", "Real-time Rendering", "UI/UX"],
@@ -57,14 +65,6 @@ export const WORK_ITEMS = [
     link: "https://pivotalcgi.com/portfolio/the-farmhouse",
 
     image: "/images/artwork/The_Farmhouse_Kitchen_CGI_008B.webp",
-  },
-  {
-    title: "Games & Personal Projects",
-    description: "A selection of games I've developed during my studies and in my own time, highlighting my passion for creating engaging gameplay and interactive experiences.",
-    stack: ["Unity", "C#", "Unreal Engine", "Blueprints"],
-    link: "https://shivani-520.itch.io/",
-
-    image: "/images/artwork/games.webp",
   },
 ];
 
