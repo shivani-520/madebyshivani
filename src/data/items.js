@@ -20,7 +20,7 @@ export const WORK_ITEMS = [
   {
     title: "Games & Personal Projects",
     description: "A selection of games I've developed during my studies and in my own time, highlighting my passion for creating engaging gameplay and interactive experiences.",
-    stack: ["Unity", "C#", "Unreal Engine", "Blueprints"],
+    stack: ["Unity", "C#", "Unreal Engine", "C++", "Javascript", "WebGL"],
     link: "https://shivani-520.itch.io/",
 
     image: "/images/artwork/games.webp",
