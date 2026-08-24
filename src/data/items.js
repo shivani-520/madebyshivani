@@ -71,7 +71,7 @@ export const WORK_ITEMS = [
 export const ABOUT_ITEMS = [
   {
     description: `
-      **Web Developer** with **4+ years of experience** building responsive, performant web applications using **React, JavaScript, HTML and CSS**. Proven ability to write clean, reusable code and deliver production-ready projects across a range of client briefs. 
+      **Developer** with **3+ years of experience** building responsive, performant web applications using **React, JavaScript, HTML and CSS**. Proven ability to write clean, reusable code and deliver production-ready projects across a range of client briefs. 
     `,
   },
 ];
