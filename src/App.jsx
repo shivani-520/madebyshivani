@@ -912,6 +912,111 @@ function AnimatedStars() {
   );
 }
 
+
+function Smoke() {
+  const materialRef = useRef();
+
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uOpacity: { value: 0.34 },
+      uColor: { value: new THREE.Color("#8b5cf6") },
+    }),
+    [],
+  );
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+    }
+  });
+
+  return (
+    <mesh position={[0, 0, -2.5]} renderOrder={-1} frustumCulled={false}>
+      <planeGeometry args={[20, 12, 1, 1]} />
+      <shaderMaterial
+        ref={materialRef}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        depthTest={false}
+        blending={THREE.NormalBlending}
+        vertexShader={`
+          varying vec2 vUv;
+
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          precision highp float;
+
+          varying vec2 vUv;
+          uniform float uTime;
+          uniform float uOpacity;
+          uniform vec3 uColor;
+
+          float hash(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+          }
+
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          }
+
+          float fbm(vec2 p) {
+            float value = 0.0;
+            float amplitude = 0.5;
+
+            for (int i = 0; i < 5; i++) {
+              value += amplitude * noise(p);
+              p = p * 2.03 + vec2(17.1, 9.2);
+              amplitude *= 0.5;
+            }
+
+            return value;
+          }
+
+          void main() {
+            vec2 uv = vUv;
+            vec2 p = uv * vec2(3.0, 2.0);
+
+            float t = uTime * 0.055;
+            float n1 = fbm(p + vec2(t, -t * 0.45));
+            float n2 = fbm(p * 1.7 + vec2(-t * 0.55, t * 0.3) + n1 * 1.15);
+            float smoke = smoothstep(0.38, 0.82, n1 * 0.65 + n2 * 0.55);
+
+            // Keep the smoke concentrated toward the middle/lower scene.
+            float edgeFade = smoothstep(0.0, 0.2, uv.x)
+              * smoothstep(0.0, 0.2, 1.0 - uv.x)
+              * smoothstep(0.0, 0.24, uv.y)
+              * smoothstep(0.0, 0.18, 1.0 - uv.y);
+
+            float vertical = smoothstep(1.0, 0.15, abs(uv.y - 0.42));
+            float alpha = smoke * edgeFade * vertical * uOpacity;
+
+            // Mostly neutral smoke with a faint violet tint to match the cards.
+            vec3 smokeColor = mix(vec3(0.52), uColor, 0.22);
+            gl_FragColor = vec4(smokeColor, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 export default function App() {
   const [section, setSection] = useState("work");
 
@@ -924,6 +1029,7 @@ export default function App() {
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
         <ResponsiveCamera />
         <AnimatedStars />
+        <Smoke />
         {section === "work" && <Carousel items={WORK_ITEMS} />}
         {section === "about" && <AboutCarousel items={ABOUT_ITEMS} />}
       </Canvas>
