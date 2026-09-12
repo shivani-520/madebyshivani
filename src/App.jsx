@@ -28,23 +28,31 @@ import "./index.css";
 const projects = [
   {
     title: "PROJECT 01",
-    image: "/images/artwork/games.webp",
+    image: "/images/artwork/games.png",
   },
   {
     title: "PROJECT 02",
-    image: "/images/artwork/iceland.webp",
+    image: "/images/artwork/iceland.png",
   },
   {
     title: "PROJECT 03",
-    image: "/images/artwork/pivotal.webp",
+    image: "/images/artwork/pivotal.png",
   },
   {
     title: "PROJECT 04",
-    image: "/images/artwork/tg-jones.webp",
+    image: "/images/artwork/tg-jones.png",
   },
   {
     title: "PROJECT 05",
-    image: "/images/artwork/vr configurator.webp",
+    image: "/images/artwork/vr configurator.png",
+  },
+  {
+    title: "PROJECT 06",
+    image: "/images/artwork/rl-agents.png",
+  },
+  {
+    title: "PROJECT 07",
+    image: "/images/artwork/The_Farmhouse_Kitchen_CGI_008B.png",
   },
 ];
 
@@ -60,6 +68,11 @@ function HeroHeading() {
         font="/fonts/zarathustra-v01.otf"
         fontSize={1.65}
         color="#73362A"
+
+        outlineWidth={0.05}
+        outlineColor="#fff"
+        outlineOpacity={0}
+
         anchorX="center"
         anchorY="middle"
         textAlign="center"
@@ -236,11 +249,11 @@ function Carousel({ container }) {
         -distance * 1.1,
       );
 
-      mesh.rotation.set(
-        -offset * 0.16,
-        offset * 0.035,
-        0,
-      );
+      // mesh.rotation.set(
+      //   -offset * 0.16,
+      //   offset * 0.035,
+      //   0,
+      // );
 
       mesh.scale.setScalar(
         Math.max(
