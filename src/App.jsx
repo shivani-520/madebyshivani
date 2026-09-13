@@ -409,39 +409,17 @@ function BoosterPack({ phase, timeline, open, feedback, reduced, packTexture }) 
   const root = useRef();
   const gesture = useRef(null);
 
-  useFrame(({ pointer, clock }, delta) => {
+  useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
-    const sealed = phase === "sealed";
     const spread = phase === "spread";
-    const idleY = sealed && !reduced
-      ? Math.sin(clock.elapsedTime * 1.3) * 0.012
-      : 0;
 
-    root.current.position.y = damp(root.current.position.y, idleY, 10, dt);
+    // The sealed-pack tilt and idle float now live on the shared parent
+    // in Scene, so the wrapper and the cards inside always move together.
     root.current.position.z = damp(
       root.current.position.z, spread ? -0.18 : 0, 7, dt
     );
     root.current.scale.setScalar(
       damp(root.current.scale.x, spread ? 0.94 : 1, 7, dt)
-    );
-
-    root.current.rotation.x = damp(
-      root.current.rotation.x,
-      sealed && !reduced ? -pointer.y * radians(1.5) : 0,
-      10,
-      dt
-    );
-    root.current.rotation.y = damp(
-      root.current.rotation.y,
-      sealed && !reduced ? pointer.x * radians(2) : 0,
-      10,
-      dt
-    );
-    root.current.rotation.z = damp(
-      root.current.rotation.z,
-      sealed && !reduced ? pointer.x * radians(0.4) : 0,
-      10,
-      dt
     );
   });
 
@@ -750,7 +728,7 @@ function CardStack({
         const highlighted = interactive && (hovered === id || selected === id);
         const targetX = (id - 2) * rowStep * rowScale;
         const targetY = highlighted ? 0.11 : 0;
-        const targetZ = highlighted ? 0.62 : 0.43 + id * 0.006;
+        const targetZ = highlighted ? 1.0 : 0.43 + id * 0.006;        
         const targetScale = rowScale * (highlighted ? 1.5 : 1);
 
         if (state.elapsed <= 0.96) {
@@ -979,17 +957,55 @@ function Scene({
 }) {
   const { viewport, size } = useThree();
   const packTexture = usePackTexture(PACK_FRONT_TEXTURE);
+  const packRoot = useRef();
   const heightFraction = size.width < 600 ? 0.55 : 0.52;
   const sceneScale = Math.min(
     viewport.height * heightFraction / HEIGHT,
     viewport.width / 3.65
   );
 
-  useFrame((_, delta) => {
+  useFrame(({ pointer, clock }, delta) => {
+    const dt = Math.min(delta, 0.05);
+    const sealed = phase === "sealed";
+
+    if (packRoot.current) {
+      // Tilt the entire sealed pack assembly — foil and cards together.
+      const idleY = sealed && !reduced
+        ? Math.sin(clock.elapsedTime * 1.3) * 0.012
+        : 0;
+
+      packRoot.current.position.y = damp(
+        packRoot.current.position.y,
+        idleY,
+        10,
+        dt
+      );
+
+      packRoot.current.rotation.x = damp(
+        packRoot.current.rotation.x,
+        sealed && !reduced ? -pointer.y * radians(3) : 0,
+        10,
+        dt
+      );
+      packRoot.current.rotation.y = damp(
+        packRoot.current.rotation.y,
+        sealed && !reduced ? pointer.x * radians(5) : 0,
+        10,
+        dt
+      );
+      packRoot.current.rotation.z = damp(
+        packRoot.current.rotation.z,
+        sealed && !reduced ? pointer.x * radians(0.5) : 0,
+        10,
+        dt
+      );
+    }
+
     if (phase !== "opening") return;
+
     timeline.current = Math.min(
       OPEN_DURATION,
-      timeline.current + Math.min(delta, 0.05)
+      timeline.current + dt
     );
     if (timeline.current >= OPEN_DURATION) finish();
   });
@@ -1002,26 +1018,28 @@ function Scene({
       <directionalLight position={[0, -4, 3]} color="#d0abd1" intensity={0.55} />
 
       <group key={cycle} scale={sceneScale}>
-        <CardStack
-          phase={phase}
-          timeline={timeline}
-          sceneScale={sceneScale}
-          feedback={feedback}
-          onActive={onActive}
-          onViewed={onViewed}
-          onSpread={onSpread}
-          onSelected={onSelected}
-          selected={selected}
-          controls={controls}
-        />
-        <BoosterPack
-          phase={phase}
-          timeline={timeline}
-          open={open}
-          feedback={feedback}
-          reduced={reduced}
-          packTexture={packTexture}
-        />
+        <group ref={packRoot}>
+          <CardStack
+            phase={phase}
+            timeline={timeline}
+            sceneScale={sceneScale}
+            feedback={feedback}
+            onActive={onActive}
+            onViewed={onViewed}
+            onSpread={onSpread}
+            onSelected={onSelected}
+            selected={selected}
+            controls={controls}
+          />
+          <BoosterPack
+            phase={phase}
+            timeline={timeline}
+            open={open}
+            feedback={feedback}
+            reduced={reduced}
+            packTexture={packTexture}
+          />
+        </group>
       </group>
     </>
   );

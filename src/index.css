@@ -1,7 +1,9 @@
 :root {
-  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
-  color: #e8e1ed;
-  background: #0b0a0e;
+  --ethereal-green: #F1ECCA;
+  --super-sonic: #3073B7;
+  --surf-the-web: #203C7F;
+  font-family: 'Times New Roman', Times, serif;
+  color: var(--ethereal-green);
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -38,7 +40,7 @@ button {
   height: 100dvh;
   overflow: hidden;
   isolation: isolate;
-  background: #0b0a0e;
+  background: var(--surf-the-web);
 }
 
 .backdrop {
@@ -46,6 +48,8 @@ button {
   inset: 0;
   pointer-events: none;
   background:
+    linear-gradient(rgb(241 236 202 / 8%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(241 236 202 / 8%) 1px, transparent 1px),
     radial-gradient(ellipse at 50% 46%,
       rgb(91 66 113 / 14%) 0%,
       rgb(47 33 63 / 8%) 34%,
@@ -53,6 +57,7 @@ button {
     radial-gradient(ellipse at 50% 100%,
       rgb(32 25 43 / 14%),
       transparent 55%);
+  background-size: 40px 40px, 40px 40px, auto, auto;
 }
 
 .experience::after {
@@ -287,7 +292,6 @@ button {
   overflow: hidden;
   isolation: isolate;
   border: 1px solid var(--card-color);
-  border-radius: 13px;
   background:
     linear-gradient(135deg,
       rgb(255 255 255 / 42%),
@@ -321,7 +325,6 @@ button {
   overflow: hidden;
   padding: 12px;
   border: 1px solid rgb(255 255 255 / 17%);
-  border-radius: 8px;
   background:
     radial-gradient(ellipse at 95% 0%,
       color-mix(in srgb, var(--card-color) 17%, transparent),
