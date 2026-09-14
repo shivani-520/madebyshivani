@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import FoilPack from "./components/FoilPack";
+import FoilPack, { FOIL_RELEASE_TIME } from "./components/FoilPack";
 import "./index.css";
 
 const PACK_FRONT_TEXTURE = "/images/textures/Foil-Front.png";
@@ -101,12 +101,11 @@ const STACK_ANGLES = [0, -0.8, 0.5, -0.4, 0.7];
 const WIDTH = 1.8;
 const HEIGHT = (WIDTH * 1920) / 1080;
 
-// Retained as the existing card-extraction clearance bound.
-// The procedural tear stays slightly below this bound.
 const BODY_HEIGHT = (WIDTH * 603) / 369;
 const BODY_Y = (BODY_HEIGHT - HEIGHT) / 2;
 
-const OPEN_DURATION = 1.9;
+// Shift extraction as a unit so cards do not rise before foil detachment.
+const OPEN_DURATION = 1.9 + (FOIL_RELEASE_TIME - 0.72);
 const FRONT_Z = 0.05;
 const CARD_FRONT_Z = 0.65;
 
@@ -118,14 +117,14 @@ const CARD_INITIAL_SCALE = 0.96;
 const CARD_INSIDE_Y = -0.22;
 const CARD_INSIDE_Z = -0.08;
 
-const CARD_REVEAL_START = 0.72;
+const CARD_REVEAL_START = FOIL_RELEASE_TIME;
 const CARD_PRELIFT_DURATION = 0.08;
 const CARD_PRELIFT_DISTANCE = 0.06;
 
 const CARD_RISE_START = CARD_REVEAL_START + CARD_PRELIFT_DURATION;
 const CARD_RISE_DURATION = 0.48;
 
-const CARD_PUSH_FORWARD_START = 1.26;
+const CARD_PUSH_FORWARD_START = 1.26 + (FOIL_RELEASE_TIME - 0.72);
 const CARD_PUSH_FORWARD_DURATION = 0.24;
 
 const CARD_SETTLE_START =
@@ -173,7 +172,6 @@ function springEase(value) {
   return 1 - Math.exp(-7 * t) * Math.cos(8 * t);
 }
 
-// Existing shared card extraction is unchanged.
 function getCardRevealPose(time, reduced) {
   if (reduced) {
     const reveal = progress(
@@ -242,7 +240,6 @@ function useReducedMotion() {
   return reduced;
 }
 
-// The same loading/configuration flow, now with only the full-front artwork.
 function usePackTextures() {
   const { gl } = useThree();
   const [assets, setAssets] = useState({ textures: null, error: null });
@@ -302,86 +299,29 @@ function usePackTextures() {
   return assets;
 }
 
-function BoosterPack({ phase, timeline, open, feedback, reduced, textures }) {
-  const gesture = useRef(null);
-
-  function end(event, cancelled = false) {
-    const start = gesture.current;
-    if (!start || start.id !== event.pointerId) return;
-    event.stopPropagation();
-
-    const distance = Math.hypot(
-      event.clientX - start.x,
-      event.clientY - start.y
-    );
-
-    gesture.current = null;
-    releasePointer(event);
-    feedback("idle");
-
-    if (!cancelled && distance < 12) open();
-  }
-
+function BoosterPack({
+  phase,
+  timeline,
+  open,
+  feedback,
+  reduced,
+  textures,
+  tearGesture,
+}) {
   return (
-    <group
-      onPointerOver={(event) => {
-        if (phase !== "sealed") return;
-        event.stopPropagation();
-        feedback("hover");
-      }}
-      onPointerOut={() => {
-        if (phase === "sealed" && !gesture.current) feedback("idle");
-      }}
-      onPointerDown={(event) => {
-        if (
-          phase !== "sealed" ||
-          event.button !== 0 ||
-          gesture.current
-        ) return;
-
-        event.stopPropagation();
-        gesture.current = {
-          id: event.pointerId,
-          x: event.clientX,
-          y: event.clientY,
-        };
-        event.target.setPointerCapture(event.pointerId);
-        feedback("drag");
-      }}
-      onPointerMove={(event) => {
-        const start = gesture.current;
-        if (!start || start.id !== event.pointerId) return;
-        event.stopPropagation();
-
-        if (
-          Math.abs(event.clientX - start.x) > 40 ||
-          Math.abs(event.clientY - start.y) > 44
-        ) {
-          gesture.current = null;
-          releasePointer(event);
-          feedback("idle");
-          open();
-        }
-      }}
-      onPointerUp={(event) => end(event)}
-      onPointerCancel={(event) => end(event, true)}
-      onLostPointerCapture={() => {
-        if (!gesture.current) return;
-        gesture.current = null;
-        feedback("idle");
-      }}
-    >
-      <FoilPack
-        texture={textures.front}
-        width={WIDTH}
-        height={HEIGHT}
-        openingY={PACK_OPENING_Y}
-        frontZ={FRONT_Z}
-        phase={phase}
-        timeline={timeline}
-        reduced={reduced}
-      />
-    </group>
+    <FoilPack
+      texture={textures.front}
+      width={WIDTH}
+      height={HEIGHT}
+      openingY={PACK_OPENING_Y}
+      frontZ={FRONT_Z}
+      phase={phase}
+      timeline={timeline}
+      reduced={reduced}
+      tearGesture={tearGesture}
+      onTearComplete={() => open(true)}
+      feedback={feedback}
+    />
   );
 }
 
@@ -780,7 +720,7 @@ function CardStack({
           }}
           onPointerOut={() => {
             setHovered((current) => current === index ? null : current);
-            if (!drag.current) feedback("idle");
+            if (phase !== "sealed" && !drag.current) feedback("idle");
           }}
           onPointerDown={(event) => {
             if (phase === "spread") {
@@ -863,6 +803,7 @@ function Scene({
   reduced,
   cycle,
   onAssetsChange,
+  tearGesture,
 }) {
   const { viewport, size } = useThree();
   const { textures, error } = usePackTextures();
@@ -883,7 +824,8 @@ function Scene({
     const dt = Math.min(delta, 0.05);
     const sealed = phase === "sealed";
 
-    if (packRoot.current) {
+    // Keep the drag plane stable while a pointer owns the flap.
+    if (packRoot.current && !tearGesture.current) {
       const idleY = sealed && !reduced
         ? Math.sin(clock.elapsedTime * 1.3) * 0.012
         : 0;
@@ -963,6 +905,7 @@ function Scene({
               feedback={feedback}
               reduced={reduced}
               textures={textures}
+              tearGesture={tearGesture}
             />
           </group>
         </group>
@@ -988,14 +931,20 @@ export default function App() {
   const [cycle, setCycle] = useState(0);
   const phaseRef = useRef("sealed");
   const timeline = useRef(0);
+  const tearGesture = useRef(null);
   const controls = useRef(null);
   const sceneElement = useRef(null);
   const reduced = useReducedMotion();
 
-  const open = useCallback(() => {
+  const open = useCallback((manual = false) => {
     if (phaseRef.current !== "sealed" || !assetsReady.current) return;
+
     phaseRef.current = "opening";
-    timeline.current = 0;
+
+    // Manual tearing already reached the release pose. Keyboard opening
+    // starts the procedural automatic tear from the existing partial state.
+    timeline.current = manual === true ? FOIL_RELEASE_TIME : 0;
+
     setCursor("idle");
     setPhase("opening");
   }, []);
@@ -1021,6 +970,9 @@ export default function App() {
     setActive(0);
     setViewed(0);
     setSelected(null);
+
+    // Remount foil and cards. Foil cleanup releases any captured pointer;
+    // its fresh refs, geometry, uniforms and transforms restore the seal.
     setCycle((value) => value + 1);
     setPhase("sealed");
   }, []);
@@ -1058,7 +1010,7 @@ export default function App() {
       ? "Pack artwork could not load. Check the image files and reload the page."
       : "Loading pack artwork."
     : phase === "sealed"
-      ? "Card pack. Press Enter or Space, click, or swipe to tear open the top."
+      ? "Card pack. Grab the top foil strip and drag to tear it open. Release and grab again to continue a partial tear. Press Enter or Space to open automatically."
       : phase === "opening"
         ? "The pack is opening and the project cards are being revealed."
         : phase === "cards"
@@ -1072,6 +1024,7 @@ export default function App() {
       <div
         ref={sceneElement}
         className="scene"
+        style={{ touchAction: "none" }}
         tabIndex={0}
         role="region"
         aria-label={label}
@@ -1109,6 +1062,7 @@ export default function App() {
             reduced={reduced}
             cycle={cycle}
             onAssetsChange={onAssetsChange}
+            tearGesture={tearGesture}
           />
         </Canvas>
       </div>

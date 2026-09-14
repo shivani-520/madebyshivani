@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 // Geometry resolution.
@@ -8,12 +8,14 @@ const BODY_ROWS = 48;
 const FLAP_ROWS = 14;
 const COLUMNS = WIDTH_SEGMENTS + 1;
 
-// Timing stays inside the existing card-extraction window.
 const GRIP_PHASE_DURATION = 0.12;
 const PRE_TEAR_PULL_DURATION = 0.12;
 const TEAR_START_TIME = GRIP_PHASE_DURATION + PRE_TEAR_PULL_DURATION;
 const TEAR_DURATION = 0.54;
-const RELEASE_TIME = TEAR_START_TIME + TEAR_DURATION;
+
+export const FOIL_RELEASE_TIME = TEAR_START_TIME + TEAR_DURATION;
+
+const RELEASE_TIME = FOIL_RELEASE_TIME;
 const RELEASE_FOLLOW_THROUGH = 0.34;
 const FLAP_FADE_START = 0.82;
 const FLAP_FADE_DURATION = 0.24;
@@ -60,7 +62,7 @@ function impulse(time, start, duration) {
   return Math.sin(t * Math.PI * 2) * Math.exp(-4 * t);
 }
 
-// Normalized time, tear progress and normalized progress velocity.
+// Keyboard/accessibility opening retains the original tear curve.
 const TEAR_KEYS = [
   [0, 0, 0],
   [0.08, 0.055, 0.55],
@@ -167,10 +169,7 @@ const FRAGMENT_SHADER = `
       dot(referenceNormal, lightDirection);
 
     float sheen = pow(
-      max(
-        dot(reflect(-lightDirection, n), viewDirection),
-        0.0
-      ),
+      max(dot(reflect(-lightDirection, n), viewDirection), 0.0),
       24.0
     );
 
@@ -194,29 +193,16 @@ const FRAGMENT_SHADER = `
       1.10
     );
 
-    // Narrow exposed laminate edge behind the rupture.
-    float exposed = smoothstep(
-      0.0,
-      0.025,
-      uFront - vUv.x
-    );
+    float exposed = smoothstep(0.0, 0.025, uFront - vUv.x);
 
     float edge = (
-      1.0 - smoothstep(
-        0.0008,
-        0.0035,
-        vEdgeDistance
-      )
+      1.0 - smoothstep(0.0008, 0.0035, vEdgeDistance)
     ) * exposed;
 
     vec3 printedColor = artwork.rgb * brightness;
     printedColor += vec3(0.018) * edge;
 
-    // uOpacity controls only the torn flap's fade.
-    gl_FragColor = vec4(
-      printedColor,
-      artwork.a * uOpacity
-    );
+    gl_FragColor = vec4(printedColor, artwork.a * uOpacity);
 
     ${OUTPUT_COLOR_CHUNK}
   }
@@ -254,10 +240,7 @@ function buildPiece(geometry, rig, isFlap) {
 
   for (let row = 0; row <= rows; row += 1) {
     const fraction = row / rows;
-
-    const v = isFlap
-      ? fraction
-      : 1 - Math.pow(1 - fraction, 1.3);
+    const v = isFlap ? fraction : 1 - Math.pow(1 - fraction, 1.3);
 
     for (let col = 0; col < COLUMNS; col += 1) {
       const i = row * COLUMNS + col;
@@ -267,8 +250,7 @@ function buildPiece(geometry, rig, isFlap) {
 
       const y = isFlap
         ? edge + (rig.halfHeight - edge) * v
-        : -rig.halfHeight +
-          (edge + rig.halfHeight) * v;
+        : -rig.halfHeight + (edge + rig.halfHeight) * v;
 
       positions[offset] = x;
       positions[offset + 1] = y;
@@ -278,12 +260,8 @@ function buildPiece(geometry, rig, isFlap) {
       const restX = positions[offset];
       const restY = positions[offset + 1];
 
-      uv[i * 2] =
-        (restX + rig.width / 2) / rig.width;
-
-      uv[i * 2 + 1] =
-        (restY + rig.halfHeight) / rig.height;
-
+      uv[i * 2] = (restX + rig.width / 2) / rig.width;
+      uv[i * 2 + 1] = (restY + rig.halfHeight) / rig.height;
       edgeDistance[i] = Math.abs(restY - edge);
 
       const pullDX = restX - rig.pullGripX;
@@ -297,7 +275,6 @@ function buildPiece(geometry, rig, isFlap) {
       );
 
       const holdRadius = GRIP_RADIUS * 1.3;
-
       const holdWeight = Math.exp(
         -(holdDX * holdDX + holdDY * holdDY) /
         (2 * holdRadius * holdRadius)
@@ -305,53 +282,29 @@ function buildPiece(geometry, rig, isFlap) {
 
       pull[i] = pullWeight * (1 - holdWeight);
       anchor[i] = holdWeight;
+      upper[i] = smooth((restY + 0.15) / (rig.halfHeight + 0.15));
+      lip[i] = gaussian((restY - edge) / 0.095);
 
-      upper[i] = smooth(
-        (restY + 0.15) /
-        (rig.halfHeight + 0.15)
+      pinch[offset] = -GRIP_COMPRESSION * (
+        pullDX * pullWeight + holdDX * holdWeight
       );
 
-      lip[i] = gaussian(
-        (restY - edge) / 0.095
+      pinch[offset + 1] = -GRIP_COMPRESSION * 0.45 * (
+        pullDY * pullWeight + holdDY * holdWeight
       );
-
-      pinch[offset] =
-        -GRIP_COMPRESSION * (
-          pullDX * pullWeight +
-          holdDX * holdWeight
-        );
-
-      pinch[offset + 1] =
-        -GRIP_COMPRESSION * 0.45 * (
-          pullDY * pullWeight +
-          holdDY * holdWeight
-        );
 
       pinch[offset + 2] =
-        -0.008 * pullWeight -
-        0.006 * holdWeight;
+        -0.008 * pullWeight - 0.006 * holdWeight;
 
-      wrinkle[i] =
-        WRINKLE_STRENGTH * (
-          pullWeight *
-            Math.sin(
-              74 * (pullDX + 0.42 * pullDY)
-            ) +
-          0.65 * holdWeight *
-            Math.sin(
-              65 * (-0.6 * holdDX + holdDY)
-            )
-        );
+      wrinkle[i] = WRINKLE_STRENGTH * (
+        pullWeight * Math.sin(74 * (pullDX + 0.42 * pullDY)) +
+        0.65 * holdWeight * Math.sin(65 * (-0.6 * holdDX + holdDY))
+      );
 
-      corner[i] =
-        0.0025 * pullWeight * (
-          Math.sin(
-            92 * pullDX + 34 * pullDY
-          ) +
-          0.4 * Math.sin(
-            51 * pullDX - 71 * pullDY
-          )
-        );
+      corner[i] = 0.0025 * pullWeight * (
+        Math.sin(92 * pullDX + 34 * pullDY) +
+        0.4 * Math.sin(51 * pullDX - 71 * pullDY)
+      );
 
       if (row < rows && col < WIDTH_SEGMENTS) {
         const a = i;
@@ -370,44 +323,20 @@ function buildPiece(geometry, rig, isFlap) {
     }
   }
 
-  const positionAttribute =
-    new THREE.BufferAttribute(positions, 3);
+  const positionAttribute = new THREE.BufferAttribute(positions, 3);
+  const normalAttribute = new THREE.BufferAttribute(normals, 3);
 
-  const normalAttribute =
-    new THREE.BufferAttribute(normals, 3);
+  positionAttribute.setUsage(THREE.DynamicDrawUsage);
+  normalAttribute.setUsage(THREE.DynamicDrawUsage);
 
-  positionAttribute.setUsage(
-    THREE.DynamicDrawUsage
-  );
-
-  normalAttribute.setUsage(
-    THREE.DynamicDrawUsage
-  );
-
-  geometry.setAttribute(
-    "position",
-    positionAttribute
-  );
-
-  geometry.setAttribute(
-    "normal",
-    normalAttribute
-  );
-
-  geometry.setAttribute(
-    "uv",
-    new THREE.BufferAttribute(uv, 2)
-  );
-
+  geometry.setAttribute("position", positionAttribute);
+  geometry.setAttribute("normal", normalAttribute);
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   geometry.setAttribute(
     "edgeDistance",
     new THREE.BufferAttribute(edgeDistance, 1)
   );
-
-  geometry.setIndex(
-    new THREE.BufferAttribute(indices, 1)
-  );
-
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.computeBoundingSphere();
 
   return {
@@ -443,7 +372,6 @@ function buildRig(
 
     pullGripX: -width * 0.43,
     pullGripY: height / 2 - 0.09,
-
     holdGripX: width * 0.38,
     holdGripY: openingY - 0.31,
 
@@ -460,6 +388,10 @@ function buildRig(
     detached: new Float64Array(COLUMNS),
     lift: new Float64Array(COLUMNS),
 
+    followX: 0,
+    followY: 0,
+    followZ: 0,
+    grabU: 0,
     front: 0,
     frontX: -width / 2,
     grip: 0,
@@ -473,64 +405,39 @@ function buildRig(
     lastTime: -1,
     lastReduced: null,
     dirty: false,
+    lastInteraction: {},
   };
 
   for (let col = 0; col < COLUMNS; col += 1) {
     const u = col / WIDTH_SEGMENTS;
     const distanceFromLeft = u * width;
 
-    rig.x[col] =
-      -width / 2 + distanceFromLeft;
+    rig.x[col] = -width / 2 + distanceFromLeft;
+    rig.edge[col] = tearY(u, rig.baseY);
 
-    rig.edge[col] =
-      tearY(u, rig.baseY);
-
-    rig.foldProfile[col] =
-      FLAP_CREASE_STRENGTH * (
-        gaussian(
-          (distanceFromLeft - 0.17) / 0.075
-        ) -
-        0.65 * gaussian(
-          (distanceFromLeft - 0.4) / 0.1
-        )
-      ) +
-      0.022 *
-        Math.sin(distanceFromLeft * 21 + 0.5);
+    rig.foldProfile[col] = FLAP_CREASE_STRENGTH * (
+      gaussian((distanceFromLeft - 0.17) / 0.075) -
+      0.65 * gaussian((distanceFromLeft - 0.4) / 0.1)
+    ) + 0.022 * Math.sin(distanceFromLeft * 21 + 0.5);
 
     rig.twistProfile[col] =
-      0.65 +
-      0.35 * Math.sin(u * 6.2 + 0.4);
+      0.65 + 0.35 * Math.sin(u * 6.2 + 0.4);
   }
 
-  rig.body = buildPiece(
-    bodyGeometry,
-    rig,
-    false
-  );
-
-  rig.flap = buildPiece(
-    flapGeometry,
-    rig,
-    true
-  );
+  rig.body = buildPiece(bodyGeometry, rig, false);
+  rig.flap = buildPiece(flapGeometry, rig, true);
 
   return rig;
 }
 
 function sampleFold(rig, distanceFromLeft) {
   const sample = clamp(
-    distanceFromLeft /
-      rig.width *
-      WIDTH_SEGMENTS,
+    distanceFromLeft / rig.width * WIDTH_SEGMENTS,
     0,
     WIDTH_SEGMENTS
   );
 
-  const index = Math.min(
-    WIDTH_SEGMENTS - 1,
-    Math.floor(sample)
-  );
-
+  const index = Math.min(WIDTH_SEGMENTS - 1, Math.floor(sample));
   const fraction = sample - index;
 
   return (
@@ -539,47 +446,29 @@ function sampleFold(rig, distanceFromLeft) {
   );
 }
 
-function bendAngle(
-  rig,
-  distance,
-  detachedLength
-) {
+function bendAngle(rig, distance, detachedLength) {
   if (detachedLength <= 0) return 0;
 
   const along = distance / detachedLength;
+  const curlStart = Math.max(0, detachedLength - FLAP_CURL_LENGTH);
 
-  const curlStart = Math.max(
-    0,
-    detachedLength - FLAP_CURL_LENGTH
+  const curl = FLAP_CURL_STRENGTH * smooth(
+    (distance - curlStart) / FLAP_CURL_LENGTH
   );
 
-  const curl =
-    FLAP_CURL_STRENGTH *
-    smooth(
-      (distance - curlStart) /
-      FLAP_CURL_LENGTH
-    );
-
   const folds =
-    sampleFold(
-      rig,
-      detachedLength - distance
-    ) *
+    sampleFold(rig, detachedLength - distance) *
     smooth(distance / 0.09) *
     smooth(detachedLength / 0.25);
 
   return rig.foldStrength * Math.max(
     0,
-    curl +
-      0.12 * along * along +
-      folds
+    curl + 0.12 * along * along + folds
   );
 }
 
 function updateFlapCenterline(rig) {
-  const detachedLength =
-    rig.width * rig.front;
-
+  const detachedLength = rig.width * rig.front;
   const frontX = rig.frontX;
   const HINGE_LENGTH = 0.11;
   const MIN_PEEL_LENGTH = 0.015;
@@ -588,17 +477,9 @@ function updateFlapCenterline(rig) {
   let curveZ = 0;
   let previousDistance = 0;
 
-  for (
-    let col = WIDTH_SEGMENTS;
-    col >= 0;
-    col -= 1
-  ) {
+  for (let col = WIDTH_SEGMENTS; col >= 0; col -= 1) {
     const x = rig.x[col];
-
-    const distanceBehindFront = Math.max(
-      0,
-      frontX - x
-    );
+    const distanceBehindFront = Math.max(0, frontX - x);
 
     if (
       x >= frontX ||
@@ -607,34 +488,21 @@ function updateFlapCenterline(rig) {
     ) {
       rig.centerX[col] = x;
       rig.centerZ[col] = 0;
-
       rig.bendX[col] = 0;
       rig.bendY[col] = 1;
       rig.bendZ[col] = 0;
-
       rig.detached[col] = 0;
       rig.lift[col] = 0;
       continue;
     }
 
     const hinge = smooth(
-      (
-        distanceBehindFront -
-        MIN_PEEL_LENGTH
-      ) / HINGE_LENGTH
+      (distanceBehindFront - MIN_PEEL_LENGTH) / HINGE_LENGTH
     );
 
-    const step = Math.max(
-      0,
-      distanceBehindFront -
-        previousDistance
-    );
-
+    const step = Math.max(0, distanceBehindFront - previousDistance);
     const midpointDistance =
-      (
-        distanceBehindFront +
-        previousDistance
-      ) * 0.5;
+      (distanceBehindFront + previousDistance) * 0.5;
 
     let midpointAngle = bendAngle(
       rig,
@@ -643,45 +511,22 @@ function updateFlapCenterline(rig) {
     );
 
     const midpointHinge = smooth(
-      (
-        midpointDistance -
-        MIN_PEEL_LENGTH
-      ) / HINGE_LENGTH
+      (midpointDistance - MIN_PEEL_LENGTH) / HINGE_LENGTH
     );
 
     midpointAngle *= midpointHinge;
-
-    curveX -=
-      Math.cos(midpointAngle) * step;
-
-    curveZ +=
-      Math.sin(midpointAngle) * step;
-
+    curveX -= Math.cos(midpointAngle) * step;
+    curveZ += Math.sin(midpointAngle) * step;
     previousDistance = distanceBehindFront;
 
-    let angle = bendAngle(
-      rig,
-      distanceBehindFront,
-      detachedLength
-    );
-
+    let angle = bendAngle(rig, distanceBehindFront, detachedLength);
     angle *= hinge;
 
-    const halfFlapHeight =
-      (
-        rig.halfHeight -
-        rig.edge[col]
-      ) / 2;
+    const halfFlapHeight = (rig.halfHeight - rig.edge[col]) / 2;
 
     const clearance = Math.min(
       1,
-      curveZ /
-        Math.max(
-          halfFlapHeight *
-            FLAP_TWIST *
-            2,
-          0.000001
-        )
+      curveZ / Math.max(halfFlapHeight * FLAP_TWIST * 2, 0.000001)
     );
 
     const twist =
@@ -692,34 +537,17 @@ function updateFlapCenterline(rig) {
       rig.twistProfile[col] *
       clearance;
 
-    rig.bendX[col] =
-      Math.sin(angle) *
-      Math.sin(twist);
+    rig.bendX[col] = Math.sin(angle) * Math.sin(twist);
+    rig.bendY[col] = Math.cos(twist);
+    rig.bendZ[col] = Math.cos(angle) * Math.sin(twist);
 
-    rig.bendY[col] =
-      Math.cos(twist);
-
-    rig.bendZ[col] =
-      Math.cos(angle) *
-      Math.sin(twist);
-
-    rig.centerX[col] =
-      x + (curveX - x) * hinge;
-
-    rig.centerZ[col] =
-      curveZ * hinge;
-
+    rig.centerX[col] = x + (curveX - x) * hinge;
+    rig.centerZ[col] = curveZ * hinge;
     rig.detached[col] = hinge;
 
-    const alongDetached =
-      detachedLength > 0
-        ? clamp(
-            distanceBehindFront /
-              detachedLength,
-            0,
-            1
-          )
-        : 0;
+    const alongDetached = detachedLength > 0
+      ? clamp(distanceBehindFront / detachedLength, 0, 1)
+      : 0;
 
     rig.lift[col] =
       FLAP_LIFT *
@@ -733,34 +561,22 @@ function deformPiece(piece, rig, isFlap) {
   const positions = piece.positions;
   const rest = piece.rest;
 
-  for (
-    let i = 0;
-    i < piece.count;
-    i += 1
-  ) {
+  for (let i = 0; i < piece.count; i += 1) {
     const offset = i * 3;
     const col = piece.column[i];
-
     const restX = rest[offset];
     const restY = rest[offset + 1];
 
     const upper = piece.upper[i];
     const anchored = piece.anchor[i];
-
-    const freeUpper =
-      upper * (1 - 0.94 * anchored);
-
+    const freeUpper = upper * (1 - 0.94 * anchored);
     const pullWeight = piece.pull[i];
     const lip = piece.lip[i];
 
-    const damaged = smooth(
-      (rig.frontX - restX) / 0.06
-    );
+    const damaged = smooth((rig.frontX - restX) / 0.06);
 
     const nearFront =
-      gaussian(
-        (restX - rig.frontX) / 0.1
-      ) *
+      gaussian((restX - rig.frontX) / 0.1) *
       lip *
       rig.tipForce;
 
@@ -786,69 +602,42 @@ function deformPiece(piece, rig, isFlap) {
       pullWeight * rig.targetZ +
       0.009 *
         freeUpper *
-        Math.sin(
-          Math.PI *
-          col /
-          WIDTH_SEGMENTS
-        ) *
+        Math.sin(Math.PI * col / WIDTH_SEGMENTS) *
         rig.load +
-      piece.wrinkle[i] *
-        (
-          0.3 * rig.grip +
-          0.7 * rig.load
-        ) +
+      piece.wrinkle[i] * (0.3 * rig.grip + 0.7 * rig.load) +
       0.012 * nearFront +
-      0.006 *
-        damaged *
-        lip *
-        (0.35 + 0.65 * rig.load);
+      0.006 * damaged * lip * (0.35 + 0.65 * rig.load);
 
-    if (
-      isFlap &&
-      rig.detached[col] > 0
-    ) {
-      const detached =
-        rig.detached[col];
-
-      const middleY =
-        (
-          rig.edge[col] +
-          rig.halfHeight
-        ) / 2;
-
-      const transverseDistance =
-        restY - middleY;
+    if (isFlap && rig.detached[col] > 0) {
+      const detached = rig.detached[col];
+      const middleY = (rig.edge[col] + rig.halfHeight) / 2;
+      const transverseDistance = restY - middleY;
 
       x +=
-        (
-          rig.centerX[col] -
-          restX
-        ) *
-        detached +
-        transverseDistance *
-          rig.bendX[col] *
-          detached;
+        (rig.centerX[col] - restX) * detached +
+        transverseDistance * rig.bendX[col] * detached;
 
       y +=
         rig.lift[col] +
-        transverseDistance *
-          (
-            rig.bendY[col] - 1
-          ) *
-          detached;
+        transverseDistance * (rig.bendY[col] - 1) * detached;
 
       z +=
-        rig.centerZ[col] *
-          detached +
-        transverseDistance *
-          rig.bendZ[col] *
-          detached +
-        piece.corner[i] *
-          detached *
-          (
-            0.35 +
-            0.65 * rig.load
-          );
+        rig.centerZ[col] * detached +
+        transverseDistance * rig.bendZ[col] * detached +
+        piece.corner[i] * detached * (0.35 + 0.65 * rig.load);
+    }
+
+    // A smooth spatial falloff pins the unbroken seam, while the free foil
+    // follows the held point. The centerline curl above is retained.
+    if (isFlap) {
+      const free = smooth(
+        (rig.front - col / WIDTH_SEGMENTS) /
+        Math.max(rig.front - rig.grabU, 0.06)
+      );
+
+      x += rig.followX * free;
+      y += rig.followY * free;
+      z += rig.followZ * free;
     }
 
     positions[offset] = x;
@@ -856,10 +645,7 @@ function deformPiece(piece, rig, isFlap) {
     positions[offset + 2] = z;
   }
 
-  piece.geometry
-    .attributes
-    .position
-    .needsUpdate = true;
+  piece.geometry.attributes.position.needsUpdate = true;
 }
 
 function updateNormals(piece) {
@@ -869,11 +655,7 @@ function updateNormals(piece) {
 
   n.fill(0);
 
-  for (
-    let i = 0;
-    i < indices.length;
-    i += 3
-  ) {
+  for (let i = 0; i < indices.length; i += 3) {
     const a = indices[i] * 3;
     const b = indices[i + 1] * 3;
     const c = indices[i + 2] * 3;
@@ -903,54 +685,28 @@ function updateNormals(piece) {
     n[c + 2] += nz;
   }
 
-  for (
-    let i = 0;
-    i < n.length;
-    i += 3
-  ) {
-    const length = Math.hypot(
-      n[i],
-      n[i + 1],
-      n[i + 2]
-    ) || 1;
+  for (let i = 0; i < n.length; i += 3) {
+    const length = Math.hypot(n[i], n[i + 1], n[i + 2]) || 1;
 
     n[i] /= length;
     n[i + 1] /= length;
     n[i + 2] /= length;
   }
 
-  piece.geometry
-    .attributes
-    .normal
-    .needsUpdate = true;
+  piece.geometry.attributes.normal.needsUpdate = true;
 }
 
 function weldAttachedNormals(rig) {
   const bodyNormals = rig.body.normals;
   const flapNormals = rig.flap.normals;
 
-  for (
-    let col = 0;
-    col < COLUMNS;
-    col += 1
-  ) {
-    const distance = Math.max(
-      0,
-      rig.frontX - rig.x[col]
-    );
-
-    const weld =
-      1 - smooth(distance / 0.035);
+  for (let col = 0; col < COLUMNS; col += 1) {
+    const distance = Math.max(0, rig.frontX - rig.x[col]);
+    const weld = 1 - smooth(distance / 0.035);
 
     if (weld <= 0) continue;
 
-    const bodyOffset =
-      (
-        BODY_ROWS *
-        COLUMNS +
-        col
-      ) * 3;
-
+    const bodyOffset = (BODY_ROWS * COLUMNS + col) * 3;
     const flapOffset = col * 3;
 
     const bx = bodyNormals[bodyOffset];
@@ -961,101 +717,56 @@ function weldAttachedNormals(rig) {
     const fy = flapNormals[flapOffset + 1];
     const fz = flapNormals[flapOffset + 2];
 
-    const length = Math.hypot(
-      bx + fx,
-      by + fy,
-      bz + fz
-    ) || 1;
-
+    const length = Math.hypot(bx + fx, by + fy, bz + fz) || 1;
     const nx = (bx + fx) / length;
     const ny = (by + fy) / length;
     const nz = (bz + fz) / length;
 
-    bodyNormals[bodyOffset] =
-      bx + (nx - bx) * weld;
+    bodyNormals[bodyOffset] = bx + (nx - bx) * weld;
+    bodyNormals[bodyOffset + 1] = by + (ny - by) * weld;
+    bodyNormals[bodyOffset + 2] = bz + (nz - bz) * weld;
 
-    bodyNormals[bodyOffset + 1] =
-      by + (ny - by) * weld;
-
-    bodyNormals[bodyOffset + 2] =
-      bz + (nz - bz) * weld;
-
-    flapNormals[flapOffset] =
-      fx + (nx - fx) * weld;
-
-    flapNormals[flapOffset + 1] =
-      fy + (ny - fy) * weld;
-
-    flapNormals[flapOffset + 2] =
-      fz + (nz - fz) * weld;
+    flapNormals[flapOffset] = fx + (nx - fx) * weld;
+    flapNormals[flapOffset + 1] = fy + (ny - fy) * weld;
+    flapNormals[flapOffset + 2] = fz + (nz - fz) * weld;
   }
 
-  rig.body.geometry
-    .attributes
-    .normal
-    .needsUpdate = true;
-
-  rig.flap.geometry
-    .attributes
-    .normal
-    .needsUpdate = true;
+  rig.body.geometry.attributes.normal.needsUpdate = true;
+  rig.flap.geometry.attributes.normal.needsUpdate = true;
 }
 
 function resetPiece(piece) {
   piece.positions.set(piece.rest);
   piece.normals.fill(0);
 
-  for (
-    let i = 2;
-    i < piece.normals.length;
-    i += 3
-  ) {
+  for (let i = 2; i < piece.normals.length; i += 3) {
     piece.normals[i] = 1;
   }
 
-  piece.geometry
-    .attributes
-    .position
-    .needsUpdate = true;
-
-  piece.geometry
-    .attributes
-    .normal
-    .needsUpdate = true;
+  piece.geometry.attributes.position.needsUpdate = true;
+  piece.geometry.attributes.normal.needsUpdate = true;
 }
 
-function updateRig(rig, time, reduced) {
+function updateRig(rig, time, reduced, tear) {
+  const previous = rig.lastInteraction;
+
   if (
     rig.lastTime === time &&
-    rig.lastReduced === reduced
-  ) {
-    return;
-  }
+    rig.lastReduced === reduced &&
+    previous.progress === tear.progress &&
+    previous.manual === tear.manual &&
+    previous.x === tear.x &&
+    previous.y === tear.y &&
+    previous.z === tear.z &&
+    previous.grip === tear.grip &&
+    previous.load === tear.load &&
+    previous.grabU === tear.grabU &&
+    previous.used === tear.used
+  ) return false;
 
+  Object.assign(previous, tear);
   rig.lastTime = time;
   rig.lastReduced = reduced;
-
-  if (reduced) {
-    rig.front = progress(
-      time,
-      0.22,
-      0.18
-    );
-
-    rig.frontX = THREE.MathUtils.lerp(
-      -rig.width / 2,
-      rig.width / 2,
-      rig.front
-    );
-
-    if (rig.dirty) {
-      resetPiece(rig.body);
-      resetPiece(rig.flap);
-      rig.dirty = false;
-    }
-
-    return;
-  }
 
   rig.front = humanTearProgress(time);
 
@@ -1069,86 +780,76 @@ function updateRig(rig, time, reduced) {
     rig.front
   );
 
-  const release = progress(
-    time,
-    RELEASE_TIME,
-    0.16
-  );
+  const release = progress(time, RELEASE_TIME, 0.16);
 
   const catchLoad =
-    progress(
-      time,
-      TEAR_START_TIME + 0.19,
-      0.06
-    ) *
-    (
-      1 -
-      progress(
-        time,
-        TEAR_START_TIME + 0.29,
-        0.05
-      )
-    );
+    progress(time, TEAR_START_TIME + 0.19, 0.06) *
+    (1 - progress(time, TEAR_START_TIME + 0.29, 0.05));
 
   rig.grip =
-    progress(
-      time,
-      0,
-      GRIP_PHASE_DURATION
-    ) *
+    progress(time, 0, GRIP_PHASE_DURATION) *
     (1 - release);
 
   rig.load =
-    progress(
-      time,
-      GRIP_PHASE_DURATION,
-      PRE_TEAR_PULL_DURATION
-    ) *
+    progress(time, GRIP_PHASE_DURATION, PRE_TEAR_PULL_DURATION) *
     (1 - release) *
     (1 + 0.22 * catchLoad);
 
-  const firstSnap = impulse(
-    time,
-    TEAR_START_TIME,
-    0.14
-  );
+  const firstSnap = impulse(time, TEAR_START_TIME, 0.14);
+  const finalSnap = impulse(time, RELEASE_TIME, 0.2);
 
-  const finalSnap = impulse(
-    time,
-    RELEASE_TIME,
-    0.2
+  rig.recoil = RELEASE_RECOIL * (
+    0.65 * firstSnap + finalSnap
   );
-
-  rig.recoil =
-    RELEASE_RECOIL * (
-      0.65 * firstSnap +
-      finalSnap
-    );
 
   rig.tipForce =
-    progress(
-      time,
-      TEAR_START_TIME,
-      0.025
-    ) *
-    (
-      1 -
-      progress(
-        time,
-        RELEASE_TIME - 0.04,
-        0.04
-      )
-    ) *
+    progress(time, TEAR_START_TIME, 0.025) *
+    (1 - progress(time, RELEASE_TIME - 0.04, 0.04)) *
     (0.75 + 0.25 * catchLoad);
 
   rig.targetX = -0.022 * rig.load;
   rig.targetY = 0.025 * rig.load;
   rig.targetZ = GRIP_Z_PULL * rig.load;
 
-  rig.foldStrength =
-    1 +
-    0.06 * firstSnap +
-    0.1 * finalSnap;
+  rig.foldStrength = 1 + 0.06 * firstSnap + 0.1 * finalSnap;
+
+  // Manual rupture is controlled exclusively by pointer displacement.
+  // An automatic opening may advance a partial tear, but cannot heal it.
+  rig.front = tear.manual
+    ? tear.progress
+    : Math.max(tear.progress, rig.front);
+
+  rig.frontX = -rig.width / 2 + rig.width * rig.front;
+
+  const hold = tear.manual ? 1 : 1 - release;
+
+  if (tear.manual || tear.used) {
+    rig.grip = tear.grip * hold;
+    rig.load = tear.load * hold;
+    rig.targetX = clamp(tear.x * 0.12, -0.08, 0.08) * hold;
+    rig.targetY = clamp(tear.y * 0.12, -0.06, 0.1) * hold;
+    rig.targetZ = 0.045 * rig.load;
+    rig.tipForce = rig.load * (rig.front < 1 ? 1 : 0);
+    rig.foldStrength = 0.8 + 0.35 * rig.load;
+
+    if (tear.manual) rig.recoil = 0;
+  }
+
+  // Preserve the final hand offset through detachment. The existing
+  // flap-root follow-through carries the foil away from this exact pose.
+  rig.followX = tear.x;
+  rig.followY = tear.y;
+  rig.followZ = tear.z;
+  rig.grabU = tear.grabU;
+
+  if (reduced) {
+    rig.grip *= 0.25;
+    rig.targetX *= 0.25;
+    rig.targetY *= 0.25;
+    rig.targetZ *= 0.25;
+    rig.recoil = 0;
+    rig.foldStrength *= 0.25;
+  }
 
   updateFlapCenterline(rig);
   deformPiece(rig.body, rig, false);
@@ -1158,6 +859,7 @@ function updateRig(rig, time, reduced) {
   weldAttachedNormals(rig);
 
   rig.dirty = true;
+  return true;
 }
 
 export default function FoilPack({
@@ -1169,7 +871,15 @@ export default function FoilPack({
   phase,
   timeline,
   reduced,
+  tearGesture,
+  onTearComplete,
+  feedback,
 }) {
+  const { camera, size, gl, events } = useThree();
+
+  const pack = useRef();
+  const bodyMaterial = useRef();
+  const hitMesh = useRef();
   const bodyGeometry = useRef();
   const flapGeometry = useRef();
   const flapMesh = useRef();
@@ -1177,16 +887,231 @@ export default function FoilPack({
   const flapRoot = useRef();
   const rig = useRef(null);
 
+  const tear = useRef({
+    progress: 0,
+    manual: true,
+    used: false,
+    complete: false,
+    x: 0,
+    y: 0,
+    z: 0,
+    grip: 0,
+    load: 0,
+    grabU: 0,
+  });
+
+  const scratch = useRef({
+    point: new THREE.Vector3(),
+    left: new THREE.Vector3(),
+    right: new THREE.Vector3(),
+  });
+
+  function releaseGesture() {
+    const gesture = tearGesture.current;
+    if (!gesture) return;
+
+    // Clear ownership first: release can synchronously cause lostcapture.
+    tearGesture.current = null;
+
+    try {
+      gesture.target.releasePointerCapture(gesture.id);
+    } catch {
+      // The browser may have already cancelled or released this pointer.
+    }
+
+    feedback("idle");
+  }
+
+  function beginTear(event) {
+    if (phase !== "sealed" || tear.current.complete) return;
+
+    event.stopPropagation();
+
+    if (tearGesture.current || event.button !== 0) return;
+
+    const node = pack.current;
+    const temp = scratch.current;
+
+    node.updateWorldMatrix(true, false);
+
+    const local = node.worldToLocal(event.point.clone());
+
+    // Freeze a plane through the actual point being grabbed. Future
+    // pointer rays provide displacement in this pack's local coordinates.
+    const normal = new THREE.Vector3(0, 0, 1)
+      .transformDirection(node.matrixWorld);
+
+    const plane = new THREE.Plane()
+      .setFromNormalAndCoplanarPoint(normal, event.point);
+
+    temp.left.set(-width / 2, height / 2, frontZ);
+    temp.right.set(width / 2, height / 2, frontZ);
+
+    node.localToWorld(temp.left).project(camera);
+    node.localToWorld(temp.right).project(camera);
+
+    const pixels = Math.hypot(
+      (temp.right.x - temp.left.x) * size.width / 2,
+      (temp.right.y - temp.left.y) * size.height / 2
+    );
+
+    const state = tear.current;
+
+    const gesture = {
+      id: event.pointerId,
+      target: event.target,
+      startX: event.clientX,
+      startY: event.clientY,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      plane,
+      local,
+      inverse: node.matrixWorld.clone().invert(),
+      required: clamp(
+        pixels * 0.9,
+        100,
+        Math.max(100, size.width * 0.65)
+      ),
+      progress: state.progress,
+      x: state.x,
+      y: state.y,
+      z: state.z,
+      dx: 0,
+      dy: 0,
+      load: 0,
+    };
+
+    try {
+      event.target.setPointerCapture(event.pointerId);
+    } catch {
+      return;
+    }
+
+    tearGesture.current = gesture;
+    state.used = true;
+
+    // Preserve deformation weights across re-grabs to prevent a pose jump.
+    if (state.progress === 0) {
+      state.grabU = clamp(event.uv?.x ?? 0, 0, 0.94);
+    }
+
+    feedback("drag");
+  }
+
+  function updateTear(event) {
+    const gesture = tearGesture.current;
+
+    if (
+      !gesture ||
+      gesture.id !== event.pointerId ||
+      phase !== "sealed"
+    ) return;
+
+    event.stopPropagation();
+
+    gesture.clientX = event.clientX;
+    gesture.clientY = event.clientY;
+
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+
+    // Horizontal displacement dominates. Upward/diagonal pulling is
+    // effective too; downward motion contributes a smaller amount.
+    const distance = Math.hypot(
+      dx,
+      Math.max(0, -dy) * 0.72,
+      Math.max(0, dy) * 0.3
+    );
+
+    const loadingDistance = gesture.required * 0.055;
+    gesture.load = clamp(distance / loadingDistance, 0, 1);
+
+    if (event.ray.intersectPlane(gesture.plane, scratch.current.point)) {
+      scratch.current.point
+        .applyMatrix4(gesture.inverse)
+        .sub(gesture.local);
+
+      gesture.dx = scratch.current.point.x;
+      gesture.dy = scratch.current.point.y;
+    }
+
+    const state = tear.current;
+
+    // Maximum displacement in this grab advances the irreversible tear.
+    // Moving backward relaxes the pull, without repairing the seam.
+    state.progress = Math.max(
+      state.progress,
+      clamp(
+        gesture.progress +
+          Math.max(0, distance - loadingDistance) / gesture.required,
+        0,
+        1
+      )
+    );
+
+    // High-frequency physical values remain in refs.
+    state.x = gesture.x + gesture.dx;
+    state.y = gesture.y + gesture.dy;
+    state.z = gesture.z + Math.min(
+      Math.hypot(gesture.dx, gesture.dy) * 0.18,
+      0.3
+    );
+    state.load = gesture.load;
+
+    if (state.progress >= 1) {
+      state.complete = true;
+      state.grip = 1;
+      releaseGesture();
+      onTearComplete();
+    }
+  }
+
+  function endTear(event, cancelled = false) {
+    if (tearGesture.current?.id !== event.pointerId) return;
+
+    event.stopPropagation();
+
+    if (!cancelled) updateTear(event);
+
+    releaseGesture();
+  }
+
+  useEffect(() => {
+    // Native fallbacks cover R3F versions that do not forward cancellation
+    // or lost capture to intersected objects.
+    const source = events.connected || gl.domElement;
+
+    const cancel = (event) => {
+      if (tearGesture.current?.id === event.pointerId) {
+        releaseGesture();
+      }
+    };
+
+    const blur = () => releaseGesture();
+
+    source.addEventListener("pointercancel", cancel);
+    source.addEventListener("lostpointercapture", cancel);
+    window.addEventListener("blur", blur);
+
+    return () => {
+      source.removeEventListener("pointercancel", cancel);
+      source.removeEventListener("lostpointercapture", cancel);
+      window.removeEventListener("blur", blur);
+      releaseGesture();
+    };
+  }, [events.connected, gl, tearGesture, feedback]);
+
+  useLayoutEffect(() => {
+    if (phase !== "sealed") releaseGesture();
+  }, [phase]);
+
   const [uniforms] = useState(() => ({
     body: makeUniforms(texture),
     flap: makeUniforms(texture),
   }));
 
-  const baseY =
-    openingY - TEAR_EDGE_INSET;
-
-  const geometryKey =
-    `${width}:${height}:${openingY}`;
+  const baseY = openingY - TEAR_EDGE_INSET;
+  const geometryKey = `${width}:${height}:${openingY}`;
 
   useLayoutEffect(() => {
     rig.current = buildRig(
@@ -1200,129 +1125,125 @@ export default function FoilPack({
     return () => {
       rig.current = null;
     };
-  }, [
-    width,
-    height,
-    openingY,
-  ]);
+  }, [width, height, openingY]);
 
   useLayoutEffect(() => {
     uniforms.body.uMap.value = texture;
     uniforms.flap.uMap.value = texture;
 
     if (flapMaterial.current) {
-      flapMaterial.current.uniforms
-        .uMap.value = texture;
-
-      flapMaterial.current
-        .uniformsNeedUpdate = true;
+      flapMaterial.current.uniforms.uMap.value = texture;
+      flapMaterial.current.uniformsNeedUpdate = true;
     }
   }, [texture, uniforms]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const state = rig.current;
     const mesh = flapMesh.current;
     const material = flapMaterial.current;
     const root = flapRoot.current;
 
-    if (
-      !state ||
-      !mesh ||
-      !material ||
-      !root
-    ) {
-      return;
-    }
+    if (!state || !mesh || !material || !root) return;
 
     const time = phase === "sealed"
       ? 0
-      : Math.min(
-          timeline.current,
-          PACK_ANIMATION_END
+      : Math.min(timeline.current, PACK_ANIMATION_END);
+
+    const interaction = tear.current;
+    interaction.manual = phase === "sealed";
+
+    if (interaction.manual && !interaction.complete) {
+      const gesture = tearGesture.current;
+      const dt = Math.min(delta, 0.05);
+
+      interaction.grip = THREE.MathUtils.damp(
+        interaction.grip,
+        gesture ? 1 : 0,
+        20,
+        dt
+      );
+
+      if (!gesture) {
+        // Only hand tension relaxes after release. The tear front and its
+        // permanent curl/damaged edge remain at the achieved progress.
+        interaction.load = THREE.MathUtils.damp(
+          interaction.load, 0, 12, dt
         );
-
-    updateRig(state, time, reduced);
-
-    const opacity = reduced
-      ? 1 - progress(time, 0.22, 0.18)
-      : 1 - progress(
-          time,
-          FLAP_FADE_START,
-          FLAP_FADE_DURATION
+        interaction.x = THREE.MathUtils.damp(
+          interaction.x, 0, 9, dt
         );
+        interaction.y = THREE.MathUtils.damp(
+          interaction.y, 0, 9, dt
+        );
+        interaction.z = THREE.MathUtils.damp(
+          interaction.z, 0, 9, dt
+        );
+      }
+    }
 
-    /*
-     * Update the live ShaderMaterial rather than relying only on
-     * the original declarative uniforms object. Some R3F/Three
-     * combinations copy the uniforms when constructing the material.
-     */
-    material.uniforms
-      .uOpacity.value = opacity;
+    if (updateRig(state, time, reduced, interaction)) {
+      // Raycasting must use the current deformed flap bounds so that
+      // released foil remains available for subsequent grabs.
+      state.flap.geometry.computeBoundingSphere();
+      state.flap.geometry.computeBoundingBox();
+    }
 
-    material.uniforms
-      .uFront.value =
-        state.front >= 1
-          ? 1.025
-          : state.front;
+    if (hitMesh.current) {
+      const start = Math.min(
+        WIDTH_SEGMENTS,
+        Math.ceil(state.front * WIDTH_SEGMENTS)
+      );
 
+      hitMesh.current.visible = phase === "sealed" && state.front < 1;
+      hitMesh.current.position.x = width * state.front / 2;
+      hitMesh.current.scale.x = Math.max(0.001, 1 - state.front);
+      hitMesh.current.position.y =
+        (state.edge[start] + height / 2) / 2;
+    }
+
+    const opacity = 1 - progress(
+      time,
+      FLAP_FADE_START,
+      FLAP_FADE_DURATION
+    );
+
+    // Update live materials, including versions that copy uniform objects.
+    material.uniforms.uOpacity.value = opacity;
+    material.uniforms.uFront.value =
+      state.front >= 1 ? 1.025 : state.front;
     material.uniformsNeedUpdate = true;
 
-    /*
-     * The body does not fade. Only the detached top flap uses
-     * uOpacity.
-     */
-    uniforms.body.uFront.value =
-      state.front >= 1
-        ? 1.025
-        : state.front;
+    const bodyUniforms = bodyMaterial.current?.uniforms ?? uniforms.body;
+    bodyUniforms.uFront.value =
+      state.front >= 1 ? 1.025 : state.front;
 
-    /*
-     * Keep the flap mounted while opacity changes so alpha blending
-     * can render the transition. Hide it only once the fade is done.
-     */
     mesh.visible =
       phase === "sealed" ||
-      (
-        phase === "opening" &&
-        opacity > 0.001
-      );
+      (phase === "opening" && opacity > 0.001);
 
     const follow = reduced
       ? 0
-      : progress(
-          time,
-          RELEASE_TIME,
-          RELEASE_FOLLOW_THROUGH
-        );
+      : progress(time, RELEASE_TIME, RELEASE_FOLLOW_THROUGH);
 
     const flick = reduced
       ? 0
-      : impulse(
-          time,
-          RELEASE_TIME,
-          RELEASE_FOLLOW_THROUGH
-        );
+      : impulse(time, RELEASE_TIME, RELEASE_FOLLOW_THROUGH);
 
     root.position.set(
       FOLLOW_X * follow,
-      baseY +
-        FOLLOW_Y * follow +
-        0.012 * flick,
-      frontZ +
-        FOLLOW_Z * follow
+      baseY + FOLLOW_Y * follow + 0.012 * flick,
+      frontZ + FOLLOW_Z * follow
     );
 
     root.rotation.set(
-      -0.08 * follow +
-        0.018 * flick,
+      -0.08 * follow + 0.018 * flick,
       0.1 * follow,
-      0.1 * follow +
-        0.015 * flick
+      0.1 * follow + 0.015 * flick
     );
   });
 
   return (
-    <group>
+    <group ref={pack}>
       {/* Permanent lower opened-pack body. */}
       <mesh
         position={[0, 0, frontZ]}
@@ -1335,6 +1256,7 @@ export default function FoilPack({
         />
 
         <shaderMaterial
+          ref={bodyMaterial}
           uniforms={uniforms.body}
           vertexShader={VERTEX_SHADER}
           fragmentShader={FRAGMENT_SHADER}
@@ -1346,7 +1268,35 @@ export default function FoilPack({
         />
       </mesh>
 
-      {/* Detachable top flap. */}
+      {/* Invisible hit target over the remaining attached top strip. */}
+      <mesh
+        ref={hitMesh}
+        position={[0, (baseY + height / 2) / 2, frontZ + 0.035]}
+        onPointerDown={beginTear}
+        onPointerMove={updateTear}
+        onPointerUp={(event) => endTear(event)}
+        onPointerCancel={(event) => endTear(event, true)}
+        onLostPointerCapture={(event) => endTear(event, true)}
+        onPointerOver={(event) => {
+          if (phase !== "sealed" || tearGesture.current) return;
+          event.stopPropagation();
+          feedback("hover");
+        }}
+        onPointerOut={() => {
+          if (!tearGesture.current) feedback("idle");
+        }}
+      >
+        <planeGeometry args={[width, height / 2 - baseY + 0.06]} />
+        <meshBasicMaterial
+          transparent
+          opacity={0}
+          depthWrite={false}
+          colorWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* The actual deformed flap remains grabbable after partial tears. */}
       <group
         ref={flapRoot}
         position={[0, baseY, frontZ]}
@@ -1356,6 +1306,19 @@ export default function FoilPack({
           position={[0, -baseY, 0]}
           renderOrder={2}
           frustumCulled={false}
+          onPointerDown={beginTear}
+          onPointerMove={updateTear}
+          onPointerUp={(event) => endTear(event)}
+          onPointerCancel={(event) => endTear(event, true)}
+          onLostPointerCapture={(event) => endTear(event, true)}
+          onPointerOver={(event) => {
+            if (phase !== "sealed" || tearGesture.current) return;
+            event.stopPropagation();
+            feedback("hover");
+          }}
+          onPointerOut={() => {
+            if (!tearGesture.current) feedback("idle");
+          }}
         >
           <bufferGeometry
             key={geometryKey}
