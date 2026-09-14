@@ -788,6 +788,49 @@ function CardStack({
   );
 }
 
+const COLLAGE_IMAGES = [
+  "/images/stickers/me.png",
+  "/images/stickers/xbox-controller.webp",
+  "/images/stickers/vibe.png",
+  "/images/stickers/BLUEWIN.png",
+  "/images/stickers/friends.png",
+  "/images/stickers/tennis-racket.webp",
+  "/images/stickers/tennis-ball.webp",
+  "/images/stickers//graduation-cap.png",
+];
+
+const COLLAGE_ITEMS = [
+  { image: COLLAGE_IMAGES[0], x: 18,  y: 7,  size: 110, rotate: -10 },
+  { image: COLLAGE_IMAGES[1], x: 35, y: 10,  size: 90,  rotate: 7 },
+  { image: COLLAGE_IMAGES[2], x: 66, y: 15,  size: 250, rotate: 10 },
+  { image: COLLAGE_IMAGES[3], x: 81, y: 27, size: 100, rotate: -8 },
+  { image: COLLAGE_IMAGES[4], x: 18,  y: 68, size: 250, rotate: 8 },
+  { image: COLLAGE_IMAGES[5], x: 38, y: 88, size: 150,  rotate: -6 },
+  { image: COLLAGE_IMAGES[6], x: 41, y: 83, size: 50, rotate: 7 },
+  { image: COLLAGE_IMAGES[7], x: 81, y: 69, size: 140,  rotate: -5 },
+];
+
+function CollageBackdrop() {
+  return (
+    <div className="backdrop" aria-hidden="true">
+      {COLLAGE_ITEMS.map((item, index) => (
+        <img
+          key={index}
+          className="collage-sticker"
+          src={item.image}
+          alt=""
+          style={{
+            left: `${item.x}%`,
+            top: `${item.y}%`,
+            width: `${item.size}px`,
+            transform: `translate(-50%, -50%) rotate(${item.rotate}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Scene({
   phase,
   timeline,
@@ -827,7 +870,7 @@ function Scene({
     // Keep the drag plane stable while a pointer owns the flap.
     if (packRoot.current && !tearGesture.current) {
       const idleY = sealed && !reduced
-        ? Math.sin(clock.elapsedTime * 1.3) * 0.012
+        ? Math.sin(clock.elapsedTime * 1.5) * 0.03
         : 0;
 
       packRoot.current.position.y = damp(
@@ -1019,7 +1062,7 @@ export default function App() {
 
   return (
     <main className={`experience cursor-${cursor}`} data-phase={phase}>
-      <div className="backdrop" aria-hidden="true" />
+      <CollageBackdrop />
 
       <div
         ref={sceneElement}

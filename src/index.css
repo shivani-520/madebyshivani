@@ -3,7 +3,7 @@
   --super-sonic: #3073B7;
   --surf-the-web: #203C7F;
   font-family: 'Times New Roman', Times, serif;
-  color: var(--ethereal-green);
+  color: #fff;
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -46,18 +46,35 @@ button {
 .backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  overflow: hidden;
   pointer-events: none;
+
   background:
-    linear-gradient(rgb(241 236 202 / 8%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(241 236 202 / 8%) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% 46%,
-      rgb(91 66 113 / 14%) 0%,
-      rgb(47 33 63 / 8%) 34%,
-      transparent 65%),
-    radial-gradient(ellipse at 50% 100%,
-      rgb(32 25 43 / 14%),
-      transparent 55%);
-  background-size: 40px 40px, 40px 40px, auto, auto;
+    linear-gradient(rgb(241 236 202 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(241 236 202 / 7%) 1px, transparent 1px),
+    var(--surf-the-web);
+
+  background-size: 40px 40px;
+}
+
+.collage-sticker {
+  position: absolute;
+  display: block;
+  height: auto;
+
+  /* Milo-style white sticker edge */
+  filter:
+    drop-shadow(4px 0 0 #f5f2e8) drop-shadow(-4px 0 0 #f5f2e8) drop-shadow(0 4px 0 #f5f2e8) drop-shadow(0 -4px 0 #f5f2e8) drop-shadow(0 7px 3px rgb(0 0 0 / 20%));
+
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@media (max-width: 600px) {
+  .collage-sticker {
+    scale: 0.72;
+  }
 }
 
 .experience::after {
@@ -141,7 +158,7 @@ button {
 }
 
 .replay-button {
-  color: #786c85;
+  color: #fff;
   font-size: 9px;
   line-height: 1.5;
   letter-spacing: 0.025em;
