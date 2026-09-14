@@ -1,92 +1,157 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
+import FoilPack from "./components/FoilPack";
 import "./index.css";
 
-// Place your pack artwork at public/textures/pack-front.webp.
 const PACK_FRONT_TEXTURE = "/images/textures/Foil-Front.png";
 
-// Change these paths to swap the image shown on each project card.
-// These paths correspond to files inside public/images/textures/cards/.
 const CARD_IMAGES = [
-  "/images/cards/GreninjaXY41.jpg",
-  "/images/cards/tg-jones-card.png",
-  "/images/cards/games-card.webp",
-  "/images/cards/games-card.webp",
-  "/images/cards/games-card.webp",
+  "/images/artwork/games.webp",
+  "/images/artwork/pivotal.webp",
+  "/images/artwork/vr configurator.webp",
+  "/images/artwork/iceland.webp",
+  "/images/artwork/rl-agents.webp",
+  "/images/artwork/vr configurator.webp",
 ];
 
-// Edit the project content here. Image paths remain sourced from CARD_IMAGES.
 const PROJECTS = [
   {
-    title: "Interactive Atlas",
+    title: "Game & Personal Projects",
     image: CARD_IMAGES[0],
     description:
-      "An interactive collection of places, stories, and small discoveries, built for curious explorers.",
-    tech: ["React", "Three.js", "Vite"],
+      "A selection of games I've developed during my studies and in my own time, highlighting my passion for creating engaging gameplay and interactive experiences.",
+    tech: ["Unity", "C#", "Unreal Engine", "C++", "JavaScript", "WebGL"],
     category: "Interactive",
     rarity: "Rare",
     number: "001",
     year: "2026",
   },
   {
-    title: "Studio Journal",
+    title: "Pivotal CGI Website",
     image: CARD_IMAGES[1],
     description:
-      "A thoughtful home for creative work, with careful typography and a focus on the details.",
-    tech: ["React", "CSS", "Vite"],
+      "A browser-based interactive 3D gallery built for Pivotal CGI, an architectural visualisation studio. Users scroll through and explore a gallery on the home page. Built from scratch and delivered as a deployed project.",
+    tech: ["React", "React Three Fiber", "HTML", "CSS", "Vite"],
     category: "Web Experience",
     rarity: "Edition",
     number: "002",
     year: "2026",
   },
   {
-    title: "Playground",
+    title: "TG Jones Virtual Store",
     image: CARD_IMAGES[2],
     description:
-      "Small games and playful interactions that turn a spare moment into something memorable.",
-    tech: ["JavaScript", "React", "CSS"],
+      "A browser-based immersive virtual store built using panoramic imagery exported from Realsee.ai, based on the physical TG Jones store in Leeds.",
+    tech: ["Three.js", "JavaScript", "HTML", "CSS", "WebGL"],
     category: "Experiment",
     rarity: "Rare",
     number: "003",
     year: "2026",
   },
   {
-    title: "Component Lab",
+    title: "Iceland Interactive Fridge",
     image: CARD_IMAGES[3],
     description:
-      "A collection of useful interface components, designed for clarity and everyday interaction.",
-    tech: ["React", "CSS", "Vite"],
+      "A real-time interactive 3D product visualiser built using three.js as a pitch demo for Iceland. Developed in close collaboration with graphic designers at UYR, the application renders a fully detailed fridge model with supplied artwork and animations that can be applied dynamically.",
+    tech: ["Three.js", "Blender", "JavaScript", "HTML & CSS"],
     category: "Interface",
     rarity: "Edition",
     number: "004",
     year: "2026",
   },
   {
-    title: "Motion Studies",
+    title: "UAV Search & Rescue Simulation",
     image: CARD_IMAGES[4],
     description:
-      "An exploration of movement and timing that makes digital objects feel a little more alive.",
-    tech: ["Three.js", "React", "WebGL"],
+      "This MSc dissertation explored the use of multi-agent reinforcement learning to train autonomous UAVs to perform coordinated search-and-rescue missions in a simulated environment built in Unity using C# and Python.",
+    tech: ["Unity", "C#", "Python", "Reinforcement Learning"],
     category: "Creative Code",
     rarity: "Special",
     number: "005",
     year: "2026",
   },
+  {
+    title: "Virtual Reality Configurator",
+    image: CARD_IMAGES[5],
+    description:
+      "A modular VR configurator built in Unreal Engine, enabling real-time customisation of a 3D architectural environment. Users navigate the space in VR and dynamically swap materials and structural elements, with changes reflected instantly across the scene.",
+    tech: ["Unreal Engine", "C++", "Blueprints"],
+    category: "Creative Code",
+    rarity: "Special",
+    number: "006",
+    year: "2026",
+  },
 ];
 
-const COLORS = ["#ad91e8", "#729fe6", "#e99697", "#83bea6", "#dec184"];
+const COLORS = [
+  "#ad91e8",
+  "#729fe6",
+  "#e99697",
+  "#83bea6",
+  "#dec184",
+  "#b9a3d8",
+];
+
+const CARD_COUNT = PROJECTS.length;
+const getCardColor = (index) => COLORS[index % COLORS.length];
 const STACK_ANGLES = [0, -0.8, 0.5, -0.4, 0.7];
+
 const WIDTH = 1.8;
-const HEIGHT = 3;
-const OPEN_DURATION = 1.65;
+const HEIGHT = (WIDTH * 1920) / 1080;
+
+// Retained as the existing card-extraction clearance bound.
+// The procedural tear stays slightly below this bound.
+const BODY_HEIGHT = (WIDTH * 603) / 369;
+const BODY_Y = (BODY_HEIGHT - HEIGHT) / 2;
+
+const OPEN_DURATION = 1.9;
 const FRONT_Z = 0.05;
-const BACK_Z = -0.23;
 const CARD_FRONT_Z = 0.65;
 
-// 304 × 426 pixels at distanceFactor 2 match 1.52 × 2.13 world units.
-// Using 96% leaves the physical plane visible around the HTML face.
+const CARD_WIDTH = 1.52;
+const CARD_HEIGHT = 2.13;
+const CARD_STACK_DEPTH = 0.04;
+const CARD_INITIAL_SCALE = 0.96;
+
+const CARD_INSIDE_Y = -0.22;
+const CARD_INSIDE_Z = -0.08;
+
+const CARD_REVEAL_START = 0.72;
+const CARD_PRELIFT_DURATION = 0.08;
+const CARD_PRELIFT_DISTANCE = 0.06;
+
+const CARD_RISE_START = CARD_REVEAL_START + CARD_PRELIFT_DURATION;
+const CARD_RISE_DURATION = 0.48;
+
+const CARD_PUSH_FORWARD_START = 1.26;
+const CARD_PUSH_FORWARD_DURATION = 0.24;
+
+const CARD_SETTLE_START =
+  CARD_PUSH_FORWARD_START + CARD_PUSH_FORWARD_DURATION;
+const CARD_SETTLE_DURATION = 0.38;
+
+const CARD_OPENING_CLEARANCE = 0.06;
+
+const CARD_MAX_HALF_HEIGHT = Math.max(
+  ...STACK_ANGLES.map((degrees) => {
+    const angle = THREE.MathUtils.degToRad(degrees);
+    return (
+      Math.abs(Math.cos(angle)) * CARD_HEIGHT / 2 +
+      Math.abs(Math.sin(angle)) * CARD_WIDTH / 2
+    );
+  })
+);
+
+const PACK_OPENING_Y = BODY_Y + BODY_HEIGHT / 2;
+const CARD_EXIT_Y =
+  PACK_OPENING_Y + CARD_MAX_HALF_HEIGHT + CARD_OPENING_CLEARANCE;
+const CARD_RISE_DISTANCE = CARD_EXIT_Y - CARD_INSIDE_Y;
+const CARD_RETURN_Z = FRONT_Z + 0.08;
+
+const CARD_REDUCED_REVEAL_START = 1.12;
+const CARD_REDUCED_REVEAL_DURATION = 0.38;
 const CARD_HTML_DISTANCE_FACTOR = 2 * 0.96;
 
 const clamp = THREE.MathUtils.clamp;
@@ -108,8 +173,49 @@ function springEase(value) {
   return 1 - Math.exp(-7 * t) * Math.cos(8 * t);
 }
 
-function seamX(y) {
-  return Math.sin(y * 31) * 0.003 + Math.sin(y * 67 + 0.4) * 0.0015;
+// Existing shared card extraction is unchanged.
+function getCardRevealPose(time, reduced) {
+  if (reduced) {
+    const reveal = progress(
+      time,
+      CARD_REDUCED_REVEAL_START,
+      CARD_REDUCED_REVEAL_DURATION
+    );
+
+    return {
+      y: 0,
+      z: THREE.MathUtils.lerp(CARD_INSIDE_Z, CARD_FRONT_Z, reveal),
+      scale: THREE.MathUtils.lerp(CARD_INITIAL_SCALE, 1, reveal),
+    };
+  }
+
+  const prelift = progress(
+    time,
+    CARD_REVEAL_START,
+    CARD_PRELIFT_DURATION
+  );
+  const rise = progress(time, CARD_RISE_START, CARD_RISE_DURATION);
+  const forward = progress(
+    time,
+    CARD_PUSH_FORWARD_START,
+    CARD_PUSH_FORWARD_DURATION
+  );
+  const settle = progress(
+    time,
+    CARD_SETTLE_START,
+    CARD_SETTLE_DURATION
+  );
+
+  const liftedY =
+    CARD_INSIDE_Y +
+    CARD_PRELIFT_DISTANCE * prelift +
+    (CARD_RISE_DISTANCE - CARD_PRELIFT_DISTANCE) * rise;
+
+  return {
+    y: liftedY * (1 - settle),
+    z: THREE.MathUtils.lerp(CARD_INSIDE_Z, CARD_FRONT_Z, forward),
+    scale: THREE.MathUtils.lerp(CARD_INITIAL_SCALE, 1, forward),
+  };
 }
 
 function releasePointer(event) {
@@ -136,292 +242,68 @@ function useReducedMotion() {
   return reduced;
 }
 
-function usePackTexture(url) {
+// The same loading/configuration flow, now with only the full-front artwork.
+function usePackTextures() {
   const { gl } = useThree();
-  const [loaded, setLoaded] = useState(null);
+  const [assets, setAssets] = useState({ textures: null, error: null });
 
   useEffect(() => {
     let active = true;
     const loader = new THREE.TextureLoader();
+    const pending = [];
+    setAssets({ textures: null, error: null });
 
-    const texture = loader.load(
-      url,
-      (result) => {
+    const load = (url) => new Promise((resolve, reject) => {
+      const texture = loader.load(url, (result) => {
         if (!active) {
           result.dispose();
+          resolve(result);
           return;
         }
 
-        result.colorSpace = THREE.SRGBColorSpace;
-        result.wrapS = THREE.ClampToEdgeWrapping;
-        result.wrapT = THREE.ClampToEdgeWrapping;
+        try {
+          result.colorSpace = THREE.SRGBColorSpace;
+          result.wrapS = result.wrapT = THREE.ClampToEdgeWrapping;
+          result.minFilter = THREE.LinearMipmapLinearFilter;
+          result.magFilter = THREE.LinearFilter;
+          result.generateMipmaps = true;
+          result.anisotropy = gl.capabilities.getMaxAnisotropy();
+          result.flipY = true;
+          result.offset.set(0, 0);
+          result.repeat.set(1, 1);
+          result.needsUpdate = true;
 
-        result.minFilter = THREE.LinearMipmapLinearFilter;
-        result.magFilter = THREE.LinearFilter;
-        result.generateMipmaps = true;
+          gl.initTexture(result);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      }, undefined, () => reject(new Error(`Could not load ${url}`)));
 
-        result.anisotropy = gl.capabilities.getMaxAnisotropy();
+      pending.push(texture);
+    });
 
-        result.flipY = true;
-        result.needsUpdate = true;
-
-        // Map the complete image without cropping, repeating, or mirroring.
-        result.offset.set(0, 0);
-        result.repeat.set(1, 1);
-        result.center.set(0, 0);
-        result.needsUpdate = true;
-
-        setLoaded({ url, texture: result });
-      },
-      undefined,
-      () => {
-        // Keep the plain fallback color if the image is unavailable.
-        if (active) setLoaded(null);
+    load(PACK_FRONT_TEXTURE).then((front) => {
+      if (active) {
+        setAssets({ textures: { front }, error: null });
       }
-    );
+    }).catch((error) => {
+      if (active) {
+        setAssets({ textures: null, error: error.message });
+      }
+    });
 
     return () => {
       active = false;
-      texture.dispose();
+      pending.forEach((texture) => texture.dispose());
     };
-  }, [url, gl]);
+  }, [gl]);
 
-  return loaded?.url === url ? loaded.texture : null;
+  return assets;
 }
 
-function createFoilMaterial(back, packTexture = null, inside = false) {
-  const silver = back || inside;
-
-  const material = new THREE.MeshStandardMaterial({
-    color: silver ? "#c7c3ca" : packTexture ? "#ffffff" : "#51405f",
-    map: silver ? null : packTexture,
-    metalness: silver ? 0.6 : 0.35,
-    roughness: silver ? 0.4 : 0.42,
-    side: back
-      ? THREE.DoubleSide
-      : inside
-        ? THREE.BackSide
-        : THREE.FrontSide,
-  });
-
-  material.userData.baseColor = material.color.clone();
-  return material;
-}
-
-function createFoilGeometry(part) {
-  const back = part === "back";
-  const geometry = new THREE.PlaneGeometry(
-    back ? WIDTH : WIDTH / 2,
-    HEIGHT,
-    back ? 36 : 28,
-    48
-  );
-  const positions = geometry.attributes.position;
-  const uv = geometry.attributes.uv;
-  const original = new Float32Array(positions.count * 3);
-
-  for (let i = 0; i < positions.count; i++) {
-    const u = uv.getX(i);
-    const v = uv.getY(i);
-    const y = (v - 0.5) * HEIGHT;
-    const seam = seamX(y);
-
-    let x;
-    if (back) x = (u - 0.5) * WIDTH;
-    else if (part === "left") x = THREE.MathUtils.lerp(-WIDTH / 2, seam, u);
-    else x = THREE.MathUtils.lerp(seam, WIDTH / 2, u);
-
-    original[i * 3] = x;
-    original[i * 3 + 1] = y;
-    original[i * 3 + 2] = v;
-
-    // Both panels sample one continuous image in full-pack UV coordinates.
-    uv.setXY(i, x / WIDTH + 0.5, v);
-  }
-
-  geometry.userData.original = original;
-  deformFoil(geometry, part, 0);
-  return geometry;
-}
-
-function deformFoil(geometry, part, time) {
-  const positions = geometry.attributes.position;
-  const original = geometry.userData.original;
-  const side = part === "left" ? -1 : 1;
-  const grab = Math.sin(progress(time, 0, 0.15) * Math.PI);
-
-  for (let i = 0; i < positions.count; i++) {
-    const ox = original[i * 3];
-    const oy = original[i * 3 + 1];
-    const v = original[i * 3 + 2];
-
-    let x = ox;
-    let y = oy;
-    let z = part === "back" ? BACK_Z : FRONT_Z;
-
-    if (part === "back") {
-      z -= progress(time, 0.2, 1.1) * Math.sin(v * Math.PI) * 0.025;
-    } else {
-      const seam = seamX(oy);
-      const panelWidth = WIDTH / 2 - side * seam;
-      const distanceFromOuter = clamp(WIDTH / 2 - side * ox, 0, panelWidth);
-      const centerInfluence = distanceFromOuter / panelWidth;
-
-      // The upper-middle opens first. The lower seam remains joined longer.
-      const belowStart = Math.max(0, 0.8 - oy) / 2.3;
-      const aboveStart = Math.max(0, oy - 0.8) / 0.7;
-      const delay =
-        belowStart * 0.5 +
-        aboveStart * 0.07 +
-        (side === 1 ? 0.035 : 0);
-      const peel = progress(time, 0.12 + delay, 0.7);
-
-      /*
-       * Integrate a curved cross-section from the anchored outer edge.
-       * The inner edge rolls across a bend and turns outward.
-       * Each Y row has its own peel amount, producing the moving V-shaped tear.
-       */
-      // Opens outward, but settles much flatter
-      const maxAngle = Math.PI * 0.8;
-      const angle = peel * maxAngle;
-
-      const bendLength = 0.34 + Math.sin(oy * 3.7 + side) * 0.018;
-      const curvature = angle / bendLength;
-      const curvedLength = Math.min(distanceFromOuter, bendLength);
-      const remaining = Math.max(0, distanceFromOuter - bendLength);
-
-      let inward = distanceFromOuter;
-      let lift = 0;
-
-      if (curvature > 0.0001) {
-        const localAngle = curvedLength * curvature;
-
-        inward =
-          Math.sin(localAngle) / curvature +
-          remaining * Math.cos(angle);
-
-        lift =
-          (1 - Math.cos(localAngle)) / curvature +
-          remaining * Math.sin(angle);
-      }
-
-      x = side * (WIDTH / 2 - inward);
-
-      // Spread the foil farther sideways
-      const openSpread = 0.5;
-      x += side * openSpread * peel * centerInfluence;
-
-      // Compress its depth as it finishes opening
-      const flatten = THREE.MathUtils.lerp(1, 0.22, peel);
-      z += lift * flatten;
-
-      const irregularity =
-        Math.sin(oy * 29 + side * 0.7) * 0.006 +
-        Math.sin(oy * 61 + 0) * 0.002;
-
-      x += side * irregularity * centerInfluence * peel;
-      y += Math.sin(oy * 5 + side) * 0.012 * centerInfluence * peel;
-      // A shallow embossed center seam stays continuous while sealed.
-      z += Math.exp(-Math.abs(ox - seam) * 90) * 0.009 * (1 - peel);
-      z += grab * centerInfluence ** 2 * 0.024;
-      y -= grab * smooth((oy + 0.2) / 1.7) * 0.016;
-    }
-
-    positions.setXYZ(i, x, y, z);
-  }
-
-  positions.needsUpdate = true;
-  geometry.computeVertexNormals();
-}
-
-function FoilPanel({ part, phase, timeline, packTexture = null }) {
-  const geometry = useMemo(() => createFoilGeometry(part), [part]);
-
-  const materials = useMemo(() => {
-    if (part === "back") {
-      return [createFoilMaterial(true)];
-    }
-
-    return [
-      createFoilMaterial(false, packTexture),
-      createFoilMaterial(false, null, true),
-    ];
-  }, [part, packTexture]);
-
-  const lastTime = useRef(-1);
-  const brightness = useRef(1);
-
-  useEffect(() => {
-    return () => geometry.dispose();
-  }, [geometry]);
-
-  useEffect(() => {
-    return () => {
-      materials.forEach((material) => material.dispose());
-    };
-  }, [materials]);
-
-  useFrame((_, delta) => {
-    const time = phase === "sealed"
-      ? 0
-      : Math.min(timeline.current, OPEN_DURATION);
-
-    if (lastTime.current !== time) {
-      deformFoil(geometry, part, time);
-      lastTime.current = time;
-    }
-
-    brightness.current = damp(
-      brightness.current,
-      phase === "spread" ? 0.62 : 1,
-      6,
-      Math.min(delta, 0.05)
-    );
-
-    materials.forEach((material) => {
-      material.color
-        .copy(material.userData.baseColor)
-        .multiplyScalar(brightness.current);
-    });
-  });
-
-  return (
-    <group dispose={null}>
-      <mesh
-        geometry={geometry}
-        material={materials[0]}
-        frustumCulled={false}
-      />
-
-      {/* Opposite face culling gives the same deformed sheet a silver inside. */}
-      {materials[1] && (
-        <mesh
-          geometry={geometry}
-          material={materials[1]}
-          frustumCulled={false}
-        />
-      )}
-    </group>
-  );
-}
-
-function BoosterPack({ phase, timeline, open, feedback, reduced, packTexture }) {
-  const root = useRef();
+function BoosterPack({ phase, timeline, open, feedback, reduced, textures }) {
   const gesture = useRef(null);
-
-  useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
-    const spread = phase === "spread";
-
-    // The sealed-pack tilt and idle float now live on the shared parent
-    // in Scene, so the wrapper and the cards inside always move together.
-    root.current.position.z = damp(
-      root.current.position.z, spread ? -0.18 : 0, 7, dt
-    );
-    root.current.scale.setScalar(
-      damp(root.current.scale.x, spread ? 0.94 : 1, 7, dt)
-    );
-  });
 
   function end(event, cancelled = false) {
     const start = gesture.current;
@@ -442,7 +324,6 @@ function BoosterPack({ phase, timeline, open, feedback, reduced, packTexture }) 
 
   return (
     <group
-      ref={root}
       onPointerOver={(event) => {
         if (phase !== "sealed") return;
         event.stopPropagation();
@@ -490,18 +371,15 @@ function BoosterPack({ phase, timeline, open, feedback, reduced, packTexture }) 
         feedback("idle");
       }}
     >
-      <FoilPanel part="back" phase={phase} timeline={timeline} />
-      <FoilPanel
-        part="left"
+      <FoilPack
+        texture={textures.front}
+        width={WIDTH}
+        height={HEIGHT}
+        openingY={PACK_OPENING_Y}
+        frontZ={FRONT_Z}
         phase={phase}
         timeline={timeline}
-        packTexture={packTexture}
-      />
-      <FoilPanel
-        part="right"
-        phase={phase}
-        timeline={timeline}
-        packTexture={packTexture}
+        reduced={reduced}
       />
     </group>
   );
@@ -514,20 +392,18 @@ function PortfolioCard({ index, highlighted }) {
 
   return (
     <group>
-      {/* Real, visible 3D card and raycast target for the existing handlers. */}
       <mesh>
-        <planeGeometry args={[1.52, 2.13]} />
+        <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
         <meshStandardMaterial
-          color={COLORS[index]}
+          color={getCardColor(index)}
           metalness={0.15}
           roughness={0.5}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* A very shallow dark reverse surface, visible from behind. */}
       <mesh position={[0, 0, -0.006]}>
-        <planeGeometry args={[1.52, 2.13]} />
+        <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
         <meshStandardMaterial
           color="#211c2b"
           metalness={0.1}
@@ -536,10 +412,6 @@ function PortfolioCard({ index, highlighted }) {
         />
       </mesh>
 
-      {/*
-       * The HTML inherits this same Three.js group transform.
-       * Blending occlusion allows the wrapper and other cards to cover it.
-       */}
       <Html
         transform
         position={[0, 0, 0.01]}
@@ -553,7 +425,7 @@ function PortfolioCard({ index, highlighted }) {
       >
         <article
           className={`project-card ${highlighted ? "is-highlighted" : ""}`}
-          style={{ "--card-color": COLORS[index] }}
+          style={{ "--card-color": getCardColor(index) }}
           aria-label={`${project.title}, project ${project.number}`}
         >
           <div className="project-card__frame">
@@ -621,7 +493,9 @@ function PortfolioCard({ index, highlighted }) {
 
             <footer className="project-card__footer">
               <span>PORTFOLIO SERIES · {project.year}</span>
-              <span>{project.number} / 005</span>
+              <span>
+                {project.number} / {String(CARD_COUNT).padStart(3, "0")}
+              </span>
             </footer>
           </div>
 
@@ -643,9 +517,10 @@ function CardStack({
   onSelected,
   selected,
   controls,
+  reduced,
 }) {
   const nodes = useRef([]);
-  const order = useRef([0, 1, 2, 3, 4]);
+  const order = useRef(PROJECTS.map((_, index) => index));
   const viewedCards = useRef(new Set());
   const drag = useRef(null);
   const flight = useRef(null);
@@ -658,17 +533,23 @@ function CardStack({
   const narrow = size.width < 600;
   const rowStep = narrow ? 1.3 : 1.65;
   const availableWidth = viewport.width / sceneScale * 0.87;
-  const rowScale = Math.min(1, availableWidth / (1.52 + rowStep * 4));
+  const rowScale = Math.min(
+    1,
+    availableWidth / (1.52 + rowStep * Math.max(CARD_COUNT - 1, 0))
+  );
+  const centerIndex = (CARD_COUNT - 1) / 2;
 
   const throwCard = useCallback((direction) => {
     if (phase !== "cards" || flight.current || drag.current) return;
+
     flight.current = {
       id: order.current[0],
       direction,
       elapsed: 0,
       committed: false,
-      final: viewedCards.current.size === COLORS.length - 1,
+      final: viewedCards.current.size === CARD_COUNT - 1,
     };
+
     setHovered(null);
     feedback("idle");
   }, [phase, feedback]);
@@ -692,13 +573,12 @@ function CardStack({
         viewedCards.current.add(action.id);
         onViewed(viewedCards.current.size);
 
-        // Every card remains mounted. Previously viewed cards return behind.
         if (!action.final) {
           order.current.push(order.current.shift());
           onActive(order.current[0]);
         }
 
-        nodes.current[action.id].position.z = -0.1;
+        nodes.current[action.id].position.z = CARD_RETURN_Z;
       }
 
       if (action.elapsed >= 0.68) {
@@ -726,14 +606,22 @@ function CardStack({
         const eased = springEase(elapsed / 0.7);
         const interactive = state.elapsed >= 0.96;
         const highlighted = interactive && (hovered === id || selected === id);
-        const targetX = (id - 2) * rowStep * rowScale;
+        const targetX = (id - centerIndex) * rowStep * rowScale;
         const targetY = highlighted ? 0.11 : 0;
-        const targetZ = highlighted ? 1.0 : 0.43 + id * 0.006;        
+        const targetZ = highlighted ? 1.0 : 0.43 + id * 0.006;
         const targetScale = rowScale * (highlighted ? 1.5 : 1);
 
         if (state.elapsed <= 0.96) {
-          node.position.x = THREE.MathUtils.lerp(snapshot.position.x, targetX, eased);
-          node.position.y = THREE.MathUtils.lerp(snapshot.position.y, 0, eased);
+          node.position.x = THREE.MathUtils.lerp(
+            snapshot.position.x,
+            targetX,
+            eased
+          );
+          node.position.y = THREE.MathUtils.lerp(
+            snapshot.position.y,
+            0,
+            eased
+          );
           node.position.z = THREE.MathUtils.lerp(
             snapshot.position.z,
             0.43 + id * 0.006,
@@ -757,21 +645,31 @@ function CardStack({
       return;
     }
 
+    const reveal = phase !== "cards"
+      ? getCardRevealPose(
+          phase === "sealed" ? 0 : timeline.current,
+          reduced
+        )
+      : null;
+
     order.current.forEach((id, rank) => {
       const node = nodes.current[id];
       if (!node) return;
 
       let x = rank === 0 ? 0 : (rank % 2 ? 1 : -1) * rank * 0.006;
       let y = rank * 0.005;
-      let z = CARD_FRONT_Z - rank * 0.04;
-      let rz = radians(STACK_ANGLES[rank]);
+      let z = CARD_FRONT_Z - rank * CARD_STACK_DEPTH;
+      let rz = radians(STACK_ANGLES[rank % STACK_ANGLES.length] ?? 0);
       let ry = 0;
 
-      if (phase !== "cards") {
-        const reveal = progress(timeline.current, 1.12, 0.38);
-        node.position.set(x, y, reveal * CARD_FRONT_Z - rank * 0.04);
+      if (reveal) {
+        node.position.set(
+          x,
+          y + reveal.y,
+          reveal.z - rank * CARD_STACK_DEPTH
+        );
         node.rotation.set(0, 0, rz);
-        node.scale.setScalar(0.96 + reveal * 0.04);
+        node.scale.setScalar(reveal.scale);
         return;
       }
 
@@ -827,6 +725,7 @@ function CardStack({
   function end(event, cancelled = false) {
     const current = drag.current;
     if (!current || current.id !== event.pointerId) return;
+
     event.stopPropagation();
     updateDrag(event);
 
@@ -853,14 +752,18 @@ function CardStack({
 
   return (
     <group>
-      {COLORS.map((color, index) => (
+      {PROJECTS.map((project, index) => (
         <group
-          key={color}
+          key={project.number ?? index}
           ref={(node) => {
             nodes.current[index] = node;
           }}
-          position={[0, 0, -index * 0.04]}
-          scale={0.96}
+          position={[
+            0,
+            reduced ? 0 : CARD_INSIDE_Y,
+            CARD_INSIDE_Z - index * CARD_STACK_DEPTH,
+          ]}
+          scale={CARD_INITIAL_SCALE}
           onPointerOver={(event) => {
             if (phase === "spread" && spread.current.elapsed >= 0.96) {
               event.stopPropagation();
@@ -894,6 +797,7 @@ function CardStack({
             ) return;
 
             event.stopPropagation();
+
             const now = performance.now();
             drag.current = {
               id: event.pointerId,
@@ -904,6 +808,7 @@ function CardStack({
               dx: 0,
               velocity: 0,
             };
+
             event.target.setPointerCapture(event.pointerId);
             feedback("drag");
           }}
@@ -932,7 +837,10 @@ function CardStack({
         >
           <PortfolioCard
             index={index}
-            highlighted={phase === "spread" && (hovered === index || selected === index)}
+            highlighted={
+              phase === "spread" &&
+              (hovered === index || selected === index)
+            }
           />
         </group>
       ))}
@@ -954,9 +862,16 @@ function Scene({
   controls,
   reduced,
   cycle,
+  onAssetsChange,
 }) {
   const { viewport, size } = useThree();
-  const packTexture = usePackTexture(PACK_FRONT_TEXTURE);
+  const { textures, error } = usePackTextures();
+  const openingStarted = useRef(false);
+
+  useEffect(() => {
+    onAssetsChange(error ? "error" : textures ? "ready" : "loading");
+  }, [textures, error, onAssetsChange]);
+
   const packRoot = useRef();
   const heightFraction = size.width < 600 ? 0.55 : 0.52;
   const sceneScale = Math.min(
@@ -969,7 +884,6 @@ function Scene({
     const sealed = phase === "sealed";
 
     if (packRoot.current) {
-      // Tilt the entire sealed pack assembly — foil and cards together.
       const idleY = sealed && !reduced
         ? Math.sin(clock.elapsedTime * 1.3) * 0.012
         : 0;
@@ -1001,12 +915,21 @@ function Scene({
       );
     }
 
-    if (phase !== "opening") return;
+    if (phase !== "opening") {
+      openingStarted.current = false;
+      return;
+    }
+
+    if (!openingStarted.current) {
+      openingStarted.current = true;
+      return;
+    }
 
     timeline.current = Math.min(
       OPEN_DURATION,
       timeline.current + dt
     );
+
     if (timeline.current >= OPEN_DURATION) finish();
   });
 
@@ -1017,36 +940,47 @@ function Scene({
       <directionalLight position={[4, 1, 5]} color="#becde3" intensity={1.25} />
       <directionalLight position={[0, -4, 3]} color="#d0abd1" intensity={0.55} />
 
-      <group key={cycle} scale={sceneScale}>
-        <group ref={packRoot}>
-          <CardStack
-            phase={phase}
-            timeline={timeline}
-            sceneScale={sceneScale}
-            feedback={feedback}
-            onActive={onActive}
-            onViewed={onViewed}
-            onSpread={onSpread}
-            onSelected={onSelected}
-            selected={selected}
-            controls={controls}
-          />
-          <BoosterPack
-            phase={phase}
-            timeline={timeline}
-            open={open}
-            feedback={feedback}
-            reduced={reduced}
-            packTexture={packTexture}
-          />
+      {textures && (
+        <group key={cycle} scale={sceneScale}>
+          <group ref={packRoot}>
+            <CardStack
+              phase={phase}
+              timeline={timeline}
+              sceneScale={sceneScale}
+              feedback={feedback}
+              onActive={onActive}
+              onViewed={onViewed}
+              onSpread={onSpread}
+              onSelected={onSelected}
+              selected={selected}
+              controls={controls}
+              reduced={reduced}
+            />
+            <BoosterPack
+              phase={phase}
+              timeline={timeline}
+              open={open}
+              feedback={feedback}
+              reduced={reduced}
+              textures={textures}
+            />
+          </group>
         </group>
-      </group>
+      )}
     </>
   );
 }
 
 export default function App() {
   const [phase, setPhase] = useState("sealed");
+  const [assetStatus, setAssetStatus] = useState("loading");
+  const assetsReady = useRef(false);
+
+  const onAssetsChange = useCallback((status) => {
+    assetsReady.current = status === "ready";
+    setAssetStatus(status);
+  }, []);
+
   const [cursor, setCursor] = useState("idle");
   const [active, setActive] = useState(0);
   const [viewed, setViewed] = useState(0);
@@ -1059,7 +993,7 @@ export default function App() {
   const reduced = useReducedMotion();
 
   const open = useCallback(() => {
-    if (phaseRef.current !== "sealed") return;
+    if (phaseRef.current !== "sealed" || !assetsReady.current) return;
     phaseRef.current = "opening";
     timeline.current = 0;
     setCursor("idle");
@@ -1112,24 +1046,29 @@ export default function App() {
         event.preventDefault();
         setSelected((value) => (
           value === null
-            ? direction === 1 ? 0 : 4
-            : clamp(value + direction, 0, 4)
+            ? direction === 1 ? 0 : CARD_COUNT - 1
+            : clamp(value + direction, 0, CARD_COUNT - 1)
         ));
       }
     }
   }
 
-  const label = phase === "sealed"
-    ? "Foil card pack. Press Enter or swipe to open the center seam."
-    : phase === "opening"
-      ? "The center seam is opening."
-      : phase === "cards"
-        ? `Card ${active + 1} of 5. Flick or use arrow keys. ${viewed} cards viewed.`
-        : "Five project cards. Select a card or use arrow keys.";
+  const label = assetStatus !== "ready"
+    ? assetStatus === "error"
+      ? "Pack artwork could not load. Check the image files and reload the page."
+      : "Loading pack artwork."
+    : phase === "sealed"
+      ? "Card pack. Press Enter or Space, click, or swipe to tear open the top."
+      : phase === "opening"
+        ? "The pack is opening and the project cards are being revealed."
+        : phase === "cards"
+          ? `Card ${active + 1} of ${CARD_COUNT}. Flick or use arrow keys. ${viewed} cards viewed.`
+          : `${CARD_COUNT} project cards. Select a card or use arrow keys.`;
 
   return (
     <main className={`experience cursor-${cursor}`} data-phase={phase}>
       <div className="backdrop" aria-hidden="true" />
+
       <div
         ref={sceneElement}
         className="scene"
@@ -1169,92 +1108,20 @@ export default function App() {
             controls={controls}
             reduced={reduced}
             cycle={cycle}
+            onAssetsChange={onAssetsChange}
           />
         </Canvas>
       </div>
 
       <div className="interface">
-        <div className="status" aria-live="polite" aria-atomic="true">
-          {phase === "sealed" && (
-            <>
-              <span className="micro-label">FIVE CARDS INSIDE</span>
-              <button className="open-button" onClick={open}>
-                Swipe or click the seam to open
-              </button>
-            </>
-          )}
-
-          {phase === "opening" && (
-            <>
-              <span className="micro-label">BREAKING THE SEAL</span>
-              <span className="hint">A little discovery.</span>
-            </>
-          )}
-
-          {phase === "cards" && (
-            <>
-              <span className="micro-label">
-                0{active + 1} <span className="muted">/ 05</span>
-              </span>
-              <span className="hint">
-                {active === 4
-                  ? "Flick to reveal the full collection"
-                  : "Flick through the cards"}
-              </span>
-            </>
-          )}
-
-          {phase === "spread" && (
-            <>
-              <span className="micro-label">
-                {selected === null
-                  ? "THE COMPLETE COLLECTION"
-                  : `PROJECT 0${selected + 1} SELECTED`}
-              </span>
-              <span className="hint">Choose a card</span>
-            </>
-          )}
-        </div>
-
-        <div className={`collection-controls ${
-          phase === "cards" || phase === "spread" ? "is-visible" : ""
-        }`}>
-          {phase === "spread" ? (
-            <div className="project-selectors" aria-label="Select a project">
-              {COLORS.map((color, index) => (
-                <button
-                  key={color}
-                  className={`project-selector ${selected === index ? "is-selected" : ""}`}
-                  style={{ "--card-color": color }}
-                  aria-label={`Select project ${index + 1}`}
-                  aria-pressed={selected === index}
-                  onClick={() => setSelected(index)}
-                >
-                  0{index + 1}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="dots" aria-hidden="true">
-              {COLORS.map((color, index) => (
-                <span
-                  key={color}
-                  className={`dot ${index === active ? "is-active" : ""}`}
-                  style={{ "--card-color": color }}
-                />
-              ))}
-            </div>
-          )}
-
-          <button
-            className="replay-button"
-            onClick={replay}
-            disabled={phase !== "cards" && phase !== "spread"}
-            tabIndex={phase === "cards" || phase === "spread" ? 0 : -1}
-          >
-            Open another pack <span aria-hidden="true">↗</span>
-          </button>
-        </div>
+        <button
+          className="replay-button"
+          onClick={replay}
+          disabled={phase !== "cards" && phase !== "spread"}
+          tabIndex={phase === "cards" || phase === "spread" ? 0 : -1}
+        >
+          Open another pack <span aria-hidden="true">↗</span>
+        </button>
       </div>
     </main>
   );
