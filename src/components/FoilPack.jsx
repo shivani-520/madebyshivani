@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 
 // Geometry resolution.
@@ -112,6 +113,8 @@ function tearY(u, baseY) {
 
 const VERTEX_SHADER = `
   attribute float edgeDistance;
+  uniform float uHintPull;
+  uniform float uHintBase;
 
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -125,7 +128,14 @@ const VERTEX_SHADER = `
     vNormal = normalMatrix * normal;
     vReferenceNormal = normalMatrix * vec3(0.0, 0.0, 1.0);
 
-    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+    // Presentation only: pin the attached edge and flex the upper strip.
+    // CPU geometry, raycasting, and the irreversible tear stay untouched.
+    vec3 hintPosition = position;
+    float freeEdge = smoothstep(0.0, 0.08, edgeDistance);
+    float upperStrip = smoothstep(uHintBase, 1.0, uv.y);
+    hintPosition.x += uHintPull * freeEdge * upperStrip;
+    hintPosition.z += uHintPull * 0.18 * freeEdge * upperStrip;
+    vec4 viewPosition = modelViewMatrix * vec4(hintPosition, 1.0);
     vViewDirection = -viewPosition.xyz;
 
     gl_Position = projectionMatrix * viewPosition;
@@ -141,6 +151,8 @@ const FRAGMENT_SHADER = `
   uniform float uOpacity;
   uniform float uFront;
   uniform float uShading;
+  uniform float uHintShimmer;
+  uniform float uHintSweep;
 
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -201,6 +213,9 @@ const FRAGMENT_SHADER = `
 
     vec3 printedColor = artwork.rgb * brightness;
     printedColor += vec3(0.018) * edge;
+    float hintBand = 1.0 - smoothstep(
+      0.0, 0.18, abs(vUv.x - uHintSweep + vUv.y * 0.035)
+    );
 
     gl_FragColor = vec4(printedColor, artwork.a * uOpacity);
 
@@ -214,6 +229,10 @@ function makeUniforms(texture) {
     uOpacity: { value: 1 },
     uFront: { value: 0 },
     uShading: { value: FOIL_SHADING },
+    uHintPull: { value: 0 },
+    uHintBase: { value: 0.9 },
+    uHintShimmer: { value: 0 },
+    uHintSweep: { value: -0.2 },
   };
 }
 
@@ -877,6 +896,13 @@ export default function FoilPack({
 }) {
   const { camera, size, gl, events } = useThree();
 
+  // Scene's existing key={cycle} resets this local lifecycle on replay.
+  const [tearHintDismissed, setTearHintDismissed] = useState(false);
+  const hintDismissed = useRef(false);
+  const hintElapsed = useRef(0);
+  const hintElement = useRef(null);
+  const showHint = phase === "sealed" && !tearHintDismissed;
+
   const pack = useRef();
   const bodyMaterial = useRef();
   const hitMesh = useRef();
@@ -922,12 +948,25 @@ export default function FoilPack({
     feedback("idle");
   }
 
+  function dismissTearHint() {
+    hintDismissed.current = true;
+    // Clear synchronously, before capture or any real gesture state changes.
+    if (hintElement.current) hintElement.current.style.visibility = "hidden";
+    if (flapMaterial.current) {
+      flapMaterial.current.uniforms.uHintPull.value = 0;
+      flapMaterial.current.uniforms.uHintShimmer.value = 0;
+    }
+    setTearHintDismissed(true);
+  }
+
   function beginTear(event) {
     if (phase !== "sealed" || tear.current.complete) return;
 
     event.stopPropagation();
 
     if (tearGesture.current || event.button !== 0) return;
+
+    dismissTearHint();
 
     const node = pack.current;
     const temp = scratch.current;
@@ -1152,6 +1191,52 @@ export default function FoilPack({
     const interaction = tear.current;
     interaction.manual = phase === "sealed";
 
+    // One visual clock drives both the HTML hand and foil shader.
+    // Never feed tutorial values into interaction, tearGesture or timeline.
+    const hintActive = showHint && !hintDismissed.current &&
+      !tearGesture.current && !interaction.used;
+    let drag = 0;
+    let handOpacity = 0;
+    let press = 0;
+    let shimmer = 0;
+    let sweep = -0.2;
+
+    if (hintActive && !reduced) {
+      hintElapsed.current += Math.min(delta, 0.05);
+      // 0.4s initial rest, 1.9s demonstration, then 1.8s rest.
+      const t = (hintElapsed.current - 0.4) % 3.7;
+      if (t >= 0) {
+        shimmer = progress(t, 0, 0.12) * (1 - progress(t, 0.42, 0.18));
+        sweep = -0.2 + 1.4 * progress(t, 0, 0.6);
+        handOpacity = progress(t, 0.35, 0.22) *
+          (1 - progress(t, 1.68, 0.22));
+        press = progress(t, 0.57, 0.16) *
+          (1 - progress(t, 1.35, 0.3));
+        const pull = progress(t, 0.73, 0.65);
+        const back = clamp((t - 1.38) / 0.36, 0, 1);
+        // Damped return with a tiny overshoot, forced exactly home.
+        const settle = back === 1 ? 0 :
+          Math.exp(-6 * back) * Math.cos(7 * back);
+        drag = pull * settle;
+      }
+    } else {
+      hintElapsed.current = 0;
+    }
+
+    const hint = hintElement.current;
+    if (hint) {
+      hint.style.setProperty("--hint-opacity", String(handOpacity));
+      hint.style.setProperty("--hint-x", `${drag * 54}px`);
+      hint.style.setProperty("--hint-scale", String(0.92 + handOpacity * 0.08 - press * 0.1));
+      hint.style.setProperty("--hint-press", String(press));
+    }
+    // 7.5% of a nominal pack-width * 0.9 pull; zero rupture at all times.
+    material.uniforms.uHintPull.value = hintActive && !reduced
+      ? width * 0.9 * 0.075 * drag : 0;
+    material.uniforms.uHintBase.value = (openingY + height / 2) / height;
+    material.uniforms.uHintShimmer.value = shimmer;
+    material.uniforms.uHintSweep.value = sweep;
+
     if (interaction.manual && !interaction.complete) {
       const gesture = tearGesture.current;
       const dt = Math.min(delta, 0.05);
@@ -1244,6 +1329,30 @@ export default function FoilPack({
 
   return (
     <group ref={pack}>
+      {showHint && (
+        <Html
+          position={[-width * 0.22, (openingY + height / 2) / 2, frontZ + 0.06]}
+          pointerEvents="none"
+          wrapperClass="tear-hint-html"
+          zIndexRange={[20, 10]}
+          style={{ pointerEvents: "none" }}
+        >
+          <div
+            ref={hintElement}
+            className={`tear-hint${reduced ? " tear-hint--static" : ""}`}
+            aria-hidden="true"
+          >
+            <span className="tear-hint__hand">
+              <img
+                src="/images/stickers/finger-grip.png"
+                alt=""
+                draggable="false"
+                className="tear-hint__hand-image"
+              />
+            </span>
+          </div>
+        </Html>
+      )}
       {/* Permanent lower opened-pack body. */}
       <mesh
         position={[0, 0, frontZ]}

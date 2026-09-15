@@ -1,0 +1,359 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
+import PortfolioCard from "./PortfolioCard";
+import { PROJECTS, CARD_COUNT } from "../../data/projects";
+import {
+  STACK_ANGLES,
+  CARD_FRONT_Z,
+  CARD_STACK_DEPTH,
+  CARD_INITIAL_SCALE,
+  CARD_INSIDE_Y,
+  CARD_INSIDE_Z,
+  CARD_RETURN_Z,
+} from "../../constants/cards";
+import { clamp, damp, radians, springEase } from "../../utils/animation";
+import { getCardRevealPose } from "../../utils/cardReveal";
+import { releasePointer } from "../../utils/pointer";
+
+export default function CardStack({
+  phase,
+  timeline,
+  sceneScale,
+  feedback,
+  onActive,
+  onViewed,
+  onSpread,
+  onSelected,
+  selected,
+  controls,
+  reduced,
+}) {
+  const nodes = useRef([]);
+  const order = useRef(PROJECTS.map((_, index) => index));
+  const viewedCards = useRef(new Set());
+  const drag = useRef(null);
+  const flight = useRef(null);
+  const spread = useRef({ elapsed: 0, snapshots: null });
+  const [hovered, setHovered] = useState(null);
+  const { size, viewport } = useThree();
+
+  const worldPerPixel = viewport.width / size.width / sceneScale;
+  const exitX = viewport.width / sceneScale / 2 + 1.2;
+  const narrow = size.width < 600;
+  const rowStep = narrow ? 1.3 : 1.65;
+  const availableWidth = viewport.width / sceneScale * 0.87;
+  const rowScale = Math.min(
+    1,
+    availableWidth / (1.52 + rowStep * Math.max(CARD_COUNT - 1, 0))
+  );
+  const centerIndex = (CARD_COUNT - 1) / 2;
+
+  const throwCard = useCallback((direction) => {
+    if (phase !== "cards" || flight.current || drag.current) return;
+
+    flight.current = {
+      id: order.current[0],
+      direction,
+      elapsed: 0,
+      committed: false,
+      final: viewedCards.current.size === CARD_COUNT - 1,
+    };
+
+    setHovered(null);
+    feedback("idle");
+  }, [phase, feedback]);
+
+  useEffect(() => {
+    controls.current = throwCard;
+    return () => {
+      controls.current = null;
+    };
+  }, [controls, throwCard]);
+
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.05);
+    const action = flight.current;
+
+    if (action) {
+      action.elapsed += dt;
+
+      if (action.elapsed >= 0.3 && !action.committed) {
+        action.committed = true;
+        viewedCards.current.add(action.id);
+        onViewed(viewedCards.current.size);
+
+        if (!action.final) {
+          order.current.push(order.current.shift());
+          onActive(order.current[0]);
+        }
+
+        nodes.current[action.id].position.z = CARD_RETURN_Z;
+      }
+
+      if (action.elapsed >= 0.68) {
+        flight.current = null;
+        if (action.final) onSpread();
+      }
+    }
+
+    if (phase === "spread") {
+      const state = spread.current;
+
+      if (!state.snapshots) {
+        state.snapshots = nodes.current.map((node) => ({
+          position: node.position.clone(),
+          rotation: node.rotation.clone(),
+          scale: node.scale.x,
+        }));
+      }
+
+      state.elapsed += dt;
+
+      nodes.current.forEach((node, id) => {
+        const snapshot = state.snapshots[id];
+        const elapsed = state.elapsed - id * 0.06;
+        const eased = springEase(elapsed / 0.7);
+        const interactive = state.elapsed >= 0.96;
+        const highlighted = interactive && (hovered === id || selected === id);
+        const targetX = (id - centerIndex) * rowStep * rowScale;
+        const targetY = highlighted ? 0.11 : 0;
+        const targetZ = highlighted ? 1.0 : 0.43 + id * 0.006;
+        const targetScale = rowScale * (highlighted ? 1.5 : 1);
+
+        if (state.elapsed <= 0.96) {
+          node.position.x = THREE.MathUtils.lerp(
+            snapshot.position.x,
+            targetX,
+            eased
+          );
+          node.position.y = THREE.MathUtils.lerp(
+            snapshot.position.y,
+            0,
+            eased
+          );
+          node.position.z = THREE.MathUtils.lerp(
+            snapshot.position.z,
+            0.43 + id * 0.006,
+            eased
+          );
+          node.rotation.y = snapshot.rotation.y * (1 - eased);
+          node.rotation.z = snapshot.rotation.z * (1 - eased);
+          node.scale.setScalar(
+            THREE.MathUtils.lerp(snapshot.scale, rowScale, eased)
+          );
+        } else {
+          node.position.x = damp(node.position.x, targetX, 14, dt);
+          node.position.y = damp(node.position.y, targetY, 14, dt);
+          node.position.z = damp(node.position.z, targetZ, 14, dt);
+          node.rotation.y = damp(node.rotation.y, 0, 14, dt);
+          node.rotation.z = damp(node.rotation.z, 0, 14, dt);
+          node.scale.setScalar(damp(node.scale.x, targetScale, 14, dt));
+        }
+      });
+
+      return;
+    }
+
+    const reveal = phase !== "cards"
+      ? getCardRevealPose(
+          phase === "sealed" ? 0 : timeline.current,
+          reduced
+        )
+      : null;
+
+    order.current.forEach((id, rank) => {
+      const node = nodes.current[id];
+      if (!node) return;
+
+      let x = rank === 0 ? 0 : (rank % 2 ? 1 : -1) * rank * 0.006;
+      let y = rank * 0.005;
+      let z = CARD_FRONT_Z - rank * CARD_STACK_DEPTH;
+      let rz = radians(STACK_ANGLES[rank % STACK_ANGLES.length] ?? 0);
+      let ry = 0;
+
+      if (reveal) {
+        node.position.set(
+          x,
+          y + reveal.y,
+          reveal.z - rank * CARD_STACK_DEPTH
+        );
+        node.rotation.set(0, 0, rz);
+        node.scale.setScalar(reveal.scale);
+        return;
+      }
+
+      if (rank === 0 && drag.current) {
+        x += drag.current.dx * worldPerPixel;
+        y += Math.min(Math.abs(x) * 0.035, 0.08);
+        z += Math.min(Math.abs(x) * 0.11, 0.2);
+        rz = clamp(-x * 0.12, -0.18, 0.18);
+        ry = clamp(x * 0.025, -0.045, 0.045);
+      }
+
+      if (action?.id === id) {
+        if (!action.committed) {
+          x = action.direction * exitX;
+          y = 0.1;
+          z = 0.5;
+          rz = -action.direction * 0.15;
+        } else if (action.final) {
+          z = 0.16;
+        }
+      }
+
+      const speed = rank === 0 && drag.current ? 30 : 17;
+      node.position.x = damp(node.position.x, x, speed, dt);
+      node.position.y = damp(node.position.y, y, speed, dt);
+      node.position.z = damp(node.position.z, z, speed, dt);
+      node.rotation.z = damp(node.rotation.z, rz, speed, dt);
+      node.rotation.y = damp(node.rotation.y, ry, speed, dt);
+      node.scale.setScalar(damp(node.scale.x, 1, 15, dt));
+    });
+  });
+
+  function updateDrag(event) {
+    const current = drag.current;
+    if (!current || current.id !== event.pointerId) return;
+
+    const now = performance.now();
+    const elapsed = now - current.lastTime;
+    const movement = event.clientX - current.lastX;
+
+    current.dx = event.clientX - current.startX;
+
+    if (elapsed > 0 && movement !== 0) {
+      const instantaneous = movement / Math.max(elapsed, 4);
+      current.velocity = current.velocity * 0.25 + instantaneous * 0.75;
+      current.lastMotion = now;
+    }
+
+    current.lastX = event.clientX;
+    current.lastTime = now;
+  }
+
+  function end(event, cancelled = false) {
+    const current = drag.current;
+    if (!current || current.id !== event.pointerId) return;
+
+    event.stopPropagation();
+    updateDrag(event);
+
+    const distance = current.dx;
+    const velocity = performance.now() - current.lastMotion < 100
+      ? current.velocity
+      : 0;
+
+    drag.current = null;
+    releasePointer(event);
+    feedback("idle");
+
+    const distanceThreshold = Math.min(76, size.width * 0.16);
+    const fastFlick = Math.abs(distance) > 8 && Math.abs(velocity) > 0.55;
+
+    if (!cancelled && (Math.abs(distance) > distanceThreshold || fastFlick)) {
+      throwCard(
+        Math.abs(distance) > distanceThreshold
+          ? Math.sign(distance)
+          : Math.sign(velocity)
+      );
+    }
+  }
+
+  return (
+    <group>
+      {PROJECTS.map((project, index) => (
+        <group
+          key={project.number ?? index}
+          ref={(node) => {
+            nodes.current[index] = node;
+          }}
+          position={[
+            0,
+            reduced ? 0 : CARD_INSIDE_Y,
+            CARD_INSIDE_Z - index * CARD_STACK_DEPTH,
+          ]}
+          scale={CARD_INITIAL_SCALE}
+          onPointerOver={(event) => {
+            if (phase === "spread" && spread.current.elapsed >= 0.96) {
+              event.stopPropagation();
+              setHovered(index);
+              feedback("pointer");
+            } else if (
+              phase === "cards" &&
+              order.current[0] === index &&
+              !flight.current
+            ) {
+              event.stopPropagation();
+              feedback("hover");
+            }
+          }}
+          onPointerOut={() => {
+            setHovered((current) => current === index ? null : current);
+            if (phase !== "sealed" && !drag.current) feedback("idle");
+          }}
+          onPointerDown={(event) => {
+            if (phase === "spread") {
+              event.stopPropagation();
+              return;
+            }
+
+            if (
+              phase !== "cards" ||
+              order.current[0] !== index ||
+              flight.current ||
+              drag.current ||
+              event.button !== 0
+            ) return;
+
+            event.stopPropagation();
+
+            const now = performance.now();
+            drag.current = {
+              id: event.pointerId,
+              startX: event.clientX,
+              lastX: event.clientX,
+              lastTime: now,
+              lastMotion: now,
+              dx: 0,
+              velocity: 0,
+            };
+
+            event.target.setPointerCapture(event.pointerId);
+            feedback("drag");
+          }}
+          onPointerMove={(event) => {
+            if (!drag.current || drag.current.id !== event.pointerId) return;
+            event.stopPropagation();
+            updateDrag(event);
+          }}
+          onPointerUp={(event) => end(event)}
+          onPointerCancel={(event) => end(event, true)}
+          onLostPointerCapture={() => {
+            if (!drag.current) return;
+            drag.current = null;
+            feedback("idle");
+          }}
+          onClick={(event) => {
+            if (
+              phase !== "spread" ||
+              spread.current.elapsed < 0.96 ||
+              event.delta > 8
+            ) return;
+
+            event.stopPropagation();
+            onSelected(index);
+          }}
+        >
+          <PortfolioCard
+            index={index}
+            highlighted={
+              phase === "spread" &&
+              (hovered === index || selected === index)
+            }
+          />
+        </group>
+      ))}
+    </group>
+  );
+}

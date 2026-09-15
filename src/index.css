@@ -568,3 +568,98 @@ button {
     transition: none !important;
   }
 }
+
+/* Foil onboarding: anchored inside FoilPack, never a pointer target. */
+.tear-hint-html,
+.tear-hint-html *,
+.tear-hint,
+.tear-hint * {
+  pointer-events: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tear-hint {
+  --hint-opacity: 0;
+  --hint-x: 0px;
+  --hint-scale: 0.92;
+  --hint-press: 0;
+  position: relative;
+  width: 0;
+  height: 0;
+  color: var(--surf-the-web);
+}
+
+.tear-hint__hand {
+  position: absolute;
+  left: -100px;
+  top: 5px;
+  width: 30px;
+  height: 36px;
+  opacity: var(--hint-opacity);
+  transform-origin: 11px 5px;
+  transform: translateX(var(--hint-x)) scale(var(--hint-scale));
+  filter:
+    drop-shadow(4px 0 0 #f5f2e8) drop-shadow(-4px 0 0 #f5f2e8) drop-shadow(0 4px 0 #f5f2e8) drop-shadow(0 -4px 0 #f5f2e8) drop-shadow(0 7px 3px rgb(0 0 0 / 20%));
+
+}
+
+.tear-hint__hand-image {
+  display: block;
+  width: 60px;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tear-hint__contact {
+  fill: none;
+  stroke: var(--ethereal-green);
+  stroke-width: 1.2;
+  opacity: var(--hint-press);
+}
+
+@media (pointer: coarse) {
+  .tear-hint__hand {
+    width: 34px;
+    height: 40px;
+  }
+}
+
+.tear-hint--static .tear-hint__label {
+  opacity: 1;
+}
+
+.tear-hint--static .tear-hint__hand {
+  display: none;
+}
+
+/* Immediate CSS fallback while a preference change reaches React. */
+@media (prefers-reduced-motion: reduce) {
+  .tear-hint__label {
+    opacity: 1;
+  }
+
+  .tear-hint__hand {
+    display: none;
+  }
+}
+
+.music-player {
+  position: absolute;
+  top: max(22px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 9px 14px;
+
+  transform: translateX(-50%);
+
+  pointer-events: auto;
+  user-select: none;
+}
