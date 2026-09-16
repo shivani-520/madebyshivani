@@ -122,9 +122,9 @@ export default function PortfolioExperience() {
         style={{ "--grid-line": `${Math.max(1, Math.round(pixelRatio)) / pixelRatio}px`,
           "--grid-step": `${Math.round(40 * pixelRatio) / pixelRatio}px` }} />
       <main className={`experience cursor-${cursor}`} data-phase={phase}>
-      <CollageBackdrop />
+      {/* <CollageBackdrop /> */}
 
-      <MusicPlayer />
+      {/* <MusicPlayer /> */}
 
       <div
         ref={sceneElement}
@@ -193,7 +193,7 @@ export default function PortfolioExperience() {
           disabled={phase !== "cards" && phase !== "spread"}
           tabIndex={phase === "cards" || phase === "spread" ? 0 : -1}
         >
-          Open another pack <span aria-hidden="true">↗</span>
+          Open another pack
         </button>
       </div>
     </main>

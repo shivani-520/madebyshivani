@@ -8,11 +8,30 @@ import {
   CARD_HTML_DISTANCE_FACTOR,
   getCardColor,
 } from "../../constants/cards";
+import "./PortfolioCardLink.css";
+
+function hasProjectUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return false;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function stopLinkEvent(event) {
+  // Stop the event before it reaches the shared R3F scene event source.
+  // Do not preventDefault: retain native link activation and keyboard access.
+  event.stopPropagation();
+}
 
 export default function PortfolioCard({ index, highlighted }) {
   const project = PROJECTS[index];
   const [failedImage, setFailedImage] = useState(null);
   const imageFailed = failedImage === project.image;
+  const showLink = hasProjectUrl(project.url);
 
   return (
     <group>
@@ -25,7 +44,6 @@ export default function PortfolioCard({ index, highlighted }) {
           side={THREE.DoubleSide}
         />
       </mesh>
-
       <mesh position={[0, 0, -0.006]}>
         <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
         <meshStandardMaterial
@@ -35,12 +53,10 @@ export default function PortfolioCard({ index, highlighted }) {
           side={THREE.BackSide}
         />
       </mesh>
-
       <Html
         transform
         position={[0, 0, 0.01]}
         distanceFactor={CARD_HTML_DISTANCE_FACTOR}
-        occlude="blending"
         zIndexRange={[16777271, 0]}
         pointerEvents="none"
         wrapperClass="project-card-html"
@@ -51,6 +67,7 @@ export default function PortfolioCard({ index, highlighted }) {
           className={`project-card ${highlighted ? "is-highlighted" : ""}`}
           style={{ "--card-color": getCardColor(index) }}
           aria-label={`${project.title}, project ${project.number}`}
+          data-has-link={showLink ? "true" : undefined}
         >
           <div className="project-card__frame">
             <header className="project-card__header">
@@ -60,7 +77,6 @@ export default function PortfolioCard({ index, highlighted }) {
                   {project.category}
                 </span>
               </div>
-
               <div className="project-card__number">
                 <span>NO.</span>
                 <strong>{project.number}</strong>
@@ -82,7 +98,6 @@ export default function PortfolioCard({ index, highlighted }) {
                   onError={() => setFailedImage(project.image)}
                 />
               )}
-
               <span className="project-card__image-caption" aria-hidden="true">
                 SELECTED WORK / {project.year}
               </span>
@@ -93,7 +108,6 @@ export default function PortfolioCard({ index, highlighted }) {
                 <span className="project-card__type-mark" aria-hidden="true" />
                 {project.category}
               </span>
-
               <span className="project-card__rarity">
                 <span aria-hidden="true">✦</span>
                 {project.rarity}
@@ -115,6 +129,29 @@ export default function PortfolioCard({ index, highlighted }) {
               ))}
             </div>
 
+            {showLink && (
+              <a
+                className="project-card__link"
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`View ${project.title} project (opens in a new tab)`}
+                draggable={false}
+                onPointerDown={stopLinkEvent}
+                onPointerMove={stopLinkEvent}
+                onPointerUp={stopLinkEvent}
+                onPointerCancel={stopLinkEvent}
+                onClick={stopLinkEvent}
+                onDoubleClick={stopLinkEvent}
+                onAuxClick={stopLinkEvent}
+                onContextMenu={stopLinkEvent}
+                onKeyDown={stopLinkEvent}
+                onKeyUp={stopLinkEvent}
+              >
+                View Project
+              </a>
+            )}
+
             <footer className="project-card__footer">
               <span>PORTFOLIO SERIES · {project.year}</span>
               <span>
@@ -122,7 +159,6 @@ export default function PortfolioCard({ index, highlighted }) {
               </span>
             </footer>
           </div>
-
           <div className="project-card__shine" aria-hidden="true" />
         </article>
       </Html>

@@ -22,6 +22,7 @@ body,
   width: 100%;
   min-height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -37,8 +38,9 @@ button {
 .experience {
   position: relative;
   width: 100%;
-  min-height: 760px;
-  min-height: max(760px, 100svh);
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   isolation: isolate;
   z-index: 1;
   background: transparent;
@@ -73,17 +75,7 @@ button {
 .collage-layer {
   position: absolute;
   inset: 0;
-
-  /*
-    Your Three.js scene is z-index: 1,
-    so this layer sits above it.
-  */
   z-index: 2;
-
-  /*
-    Empty areas don't interfere
-    with the Three.js canvas.
-  */
   pointer-events: none;
 }
 
@@ -94,12 +86,13 @@ button {
 
 .collage-sticker-wrapper {
   position: absolute;
-
-  /*
-    Re-enable pointer events only
-    where a sticker exists.
-  */
+  z-index: 0;
   pointer-events: auto;
+
+  left: var(--sticker-x);
+  top: clamp(160px, var(--sticker-y), calc(100% - 120px));
+  width: min(var(--sticker-size), 15vw);
+  transform: translate(-50%, -50%);
 }
 
 
@@ -251,6 +244,7 @@ button {
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
+  text-decoration: underline;
   transition:
     color 160ms ease,
     background 160ms ease,
@@ -997,6 +991,8 @@ button {
   border: 0;
   background: transparent;
   cursor: pointer;
+
+  pointer-events: auto;
 }
 
 .sticker-button:focus-visible {
@@ -1015,8 +1011,14 @@ button {
 .sticker-popup {
   top: 70%;
   left: 0;
-  width: 220px;
-  max-width: min(220px, 70vw);
+
+  width: max-content;
+  max-width: min(160px, 60vw);
+
+  padding: 6px 9px;
+  font-size: 11px;
+  line-height: 1.2;
+
   overflow-wrap: anywhere;
 }
 
@@ -1064,13 +1066,9 @@ button {
 }
 
 @media (max-width: 999px) {
-  .experience {
-    min-height: max(900px, 100svh);
-  }
-
   .scene {
-    top: 210px;
-    bottom: 210px;
+    top: 120px;
+    bottom: 100px;
   }
 
   .collage-layer {
@@ -1129,17 +1127,5 @@ button {
   *::before,
   *::after {
     animation: none !important;
-  }
-}
-
-/* Keep the lower collage clear of the expanded card row. */
-@media (min-width: 1000px) {
-  .experience[data-phase="spread"] .collage-sticker-wrapper:nth-child(5) {
-    top: 85%;
-  }
-
-  .experience[data-phase="spread"] .collage-sticker-wrapper:nth-child(6) {
-    top: 85%;
-    left: 62%;
   }
 }

@@ -7,6 +7,8 @@ export const CARD_IMAGES = [
     "/images/artwork/vr configurator.webp",
 ];
 
+// Replace each example.com URL with that project's real URL.
+// Set url to "" to temporarily hide a project's View Project link.
 export const PROJECTS = [
     {
         title: "Game & Personal Projects",
@@ -18,6 +20,7 @@ export const PROJECTS = [
         rarity: "Rare",
         number: "001",
         year: "2026",
+        url: "https://shivani-520.itch.io/", // TODO: replace with your project URL.
     },
     {
         title: "Pivotal CGI Website",
@@ -29,6 +32,7 @@ export const PROJECTS = [
         rarity: "Edition",
         number: "002",
         year: "2026",
+        url: "https://pivotalcgi.com/", // TODO: replace with your project URL.
     },
     {
         title: "TG Jones Virtual Store",
@@ -40,6 +44,7 @@ export const PROJECTS = [
         rarity: "Rare",
         number: "003",
         year: "2026",
+        url: "https://tgjonesdemo.vercel.app/preview.html", // TODO: replace with your project URL.
     },
     {
         title: "Iceland Interactive Fridge",
@@ -51,6 +56,7 @@ export const PROJECTS = [
         rarity: "Edition",
         number: "004",
         year: "2026",
+        url: "https://www.youtube.com/watch?v=M5wO_F_BlxQ", // TODO: replace with your project URL.
     },
     {
         title: "UAV Search & Rescue Simulation",
@@ -62,6 +68,7 @@ export const PROJECTS = [
         rarity: "Special",
         number: "005",
         year: "2026",
+        url: "https://github.com/shivani-520/Final-Project-MARL", // TODO: replace with your project URL.
     },
     {
         title: "Virtual Reality Configurator",
@@ -73,6 +80,7 @@ export const PROJECTS = [
         rarity: "Special",
         number: "006",
         year: "2026",
+        url: "https://pivotalcgi.com/portfolio/the-farmhouse", // TODO: replace with your project URL.
     },
 ];
 

@@ -16,9 +16,7 @@ export const COLLAGE_ITEMS = [
         rotate: -10,
         description: [
             "That's me 👋",
-            "Game programmer 🎮",
-            "Probably debugging something...",
-            "Yep, you clicked me again 😎",
+            "Game programmer",
         ],
     },
     {
@@ -29,8 +27,6 @@ export const COLLAGE_ITEMS = [
         rotate: 7,
         description: [
             "Arthur Morgan",
-            "I got TB",
-            "I have a plan...",
         ],
     },
     {
@@ -48,7 +44,7 @@ export const COLLAGE_ITEMS = [
         size: 150,
         rotate: -6,
         description: [
-            "Tennis is one of my favourite sports 🎾",
+            "Tennis is one of my favourite sports",
         ],
     },
     {
@@ -70,7 +66,6 @@ export const COLLAGE_ITEMS = [
         rotate: -10,
         description: [
             "Bolt <3",
-            "RIP",
         ],
     },
 ];
