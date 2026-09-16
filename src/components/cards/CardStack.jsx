@@ -43,7 +43,7 @@ export default function CardStack({
   // A temporarily collapsed canvas must not write NaN/Infinity into nodes.
   const validSize = size.width > 0 && size.height > 0 && sceneScale > 0;
   const worldPerPixel = validSize ? viewport.width / size.width / sceneScale : 0;
-  const narrow = size.width < 600;
+  const narrow = size.width < 1000;
   const inSpread = phase === "spread" && !narrow;
   const browsing = phase === "cards" || (phase === "spread" && narrow);
   // Fit one card, independently of the number of projects. Measure at its
@@ -52,7 +52,8 @@ export default function CardStack({
     camera,
     new THREE.Vector3(0, 0, CARD_FRONT_Z * sceneScale)
   );
-  const deckScale = narrow && validSize ? Math.min(
+  const deckScale = validSize ? Math.min(
+    narrow ? 1.65 : 1,
     cardViewport.width * 0.78 / sceneScale / CARD_WIDTH,
     cardViewport.height * 0.70 / sceneScale / CARD_HEIGHT
   ) : 1;
@@ -60,15 +61,17 @@ export default function CardStack({
     ? viewport.width / sceneScale / 2 + Math.max(1.2, CARD_WIDTH * deckScale / 2 + 0.2)
     : 0;
   const rowStep = CARD_WIDTH + 0.2;
-  const availableWidth = validSize ? viewport.width / sceneScale * 0.87 : 0;
+  const highlightedViewport = viewport.getCurrentViewport(camera,
+    new THREE.Vector3(0, 0, sceneScale));
+  const availableWidth = validSize ? highlightedViewport.width / sceneScale * 0.87 : 0;
   const rowScale = Math.min(
     1,
-    availableWidth / (1.52 + rowStep * Math.max(CARD_COUNT - 1, 0))
+    availableWidth / (CARD_WIDTH * 1.5 + rowStep * Math.max(CARD_COUNT - 1, 0))
   );
   const centerIndex = (CARD_COUNT - 1) / 2;
 
   const throwCard = useCallback((direction) => {
-    if (phase !== "cards" || flight.current || drag.current) return;
+    if (!browsing || flight.current || drag.current) return;
 
     flight.current = {
       id: order.current[0],
@@ -81,7 +84,7 @@ export default function CardStack({
 
     setHovered(null);
     feedback("idle");
-  }, [phase, feedback, narrow]);
+  }, [browsing, feedback, narrow]);
 
   useEffect(() => {
     controls.current = throwCard;
@@ -316,7 +319,7 @@ export default function CardStack({
               setHovered(index);
               feedback("pointer");
             } else if (
-              phase === "cards" &&
+              browsing &&
               order.current[0] === index &&
               !flight.current
             ) {
@@ -335,7 +338,7 @@ export default function CardStack({
             }
 
             if (
-              phase !== "cards" ||
+              !browsing ||
               order.current[0] !== index ||
               flight.current ||
               drag.current ||

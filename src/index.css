@@ -17,15 +17,16 @@
 
 html,
 body,
-#root {
+#root,
+#app {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   margin: 0;
 }
 
 body {
-  overflow: hidden;
-  overscroll-behavior: none;
+  background: var(--surf-the-web);
+  overscroll-behavior-x: none;
 }
 
 button {
@@ -36,11 +37,11 @@ button {
 .experience {
   position: relative;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 760px;
+  min-height: max(760px, 100svh);
   isolation: isolate;
-  background: var(--surf-the-web);
+  z-index: 1;
+  background: transparent;
 }
 
 /* --------------------------------
@@ -50,17 +51,16 @@ button {
 .backdrop {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100dvh;
+
   z-index: 0;
   pointer-events: none;
 
   background-color: var(--surf-the-web);
   background-image:
-    linear-gradient(rgb(241 236 202 / 7%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(241 236 202 / 7%) 1px, transparent 1px);
+    linear-gradient(rgb(241 236 202 / 7%) var(--grid-line, 1px), transparent var(--grid-line, 1px)),
+    linear-gradient(90deg, rgb(241 236 202 / 7%) var(--grid-line, 1px), transparent var(--grid-line, 1px));
 
-  background-size: 40px 40px;
+  background-size: var(--grid-step, 40px) var(--grid-step, 40px);
   background-position: 0 0;
   background-repeat: repeat;
 }
@@ -185,26 +185,6 @@ button {
 }
 
 
-/* --------------------------------
-   MOBILE
--------------------------------- */
-
-@media (max-width: 600px) {
-  .collage-sticker {
-    scale: 0.72;
-  }
-
-  .collage-sticker:hover {
-    scale: 0.76;
-  }
-
-  .sticker-popup {
-    max-width: 170px;
-    padding: 8px 10px;
-    font-size: 12px;
-  }
-}
-
 .experience::after {
   content: "";
   position: absolute;
@@ -218,14 +198,15 @@ button {
   position: absolute;
   inset: 0;
   z-index: 1;
-  touch-action: none;
+  overflow: clip;
+  touch-action: pan-y;
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .scene canvas {
   display: block;
-  touch-action: none;
+  touch-action: pan-y;
   background: transparent;
 }
 
@@ -465,13 +446,13 @@ button {
 
   color: #191919;
 
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 900;
   line-height: 1.05;
   letter-spacing: -0.04em;
 
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 
   text-shadow: 0 1px 0 rgb(255 255 255 / 60%);
 }
@@ -551,8 +532,8 @@ button {
 .project-card__image-wrap {
   position: relative;
 
-  height: 172px;
-  flex: 0 0 172px;
+  height: 144px;
+  flex: 0 0 144px;
 
   overflow: hidden;
 
@@ -748,7 +729,7 @@ button {
 }
 
 .project-card__description {
-  display: -webkit-box;
+  display: block;
   margin: 0;
 
   overflow: hidden;
@@ -759,8 +740,7 @@ button {
   font-weight: 600;
   line-height: 1.4;
 
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+
 }
 
 /* ---------------- TECH / "ATTACKS" ---------------- */
@@ -768,7 +748,9 @@ button {
 .project-card__tech {
   display: flex;
   min-height: 30px;
-  flex: 0 0 30px;
+  flex: 0 0 36px;
+  flex-wrap: wrap;
+  align-content: center;
   align-items: center;
   gap: 4px;
 
@@ -802,8 +784,8 @@ button {
   font-weight: 800;
   line-height: 1;
 
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 
   box-shadow: inset 0 1px rgb(255 255 255 / 55%);
 }
@@ -891,20 +873,6 @@ button {
 
 .project-card.is-highlighted .project-card__shine {
   opacity: 0.72;
-}
-
-@media (max-width: 600px) {
-  .interface {
-    bottom: max(18px, env(safe-area-inset-bottom));
-  }
-
-}
-
-@media (max-height: 560px) {
-  .interface {
-    bottom: max(9px, env(safe-area-inset-bottom));
-  }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1009,4 +977,169 @@ button {
 
   pointer-events: auto;
   user-select: none;
+}
+
+/* Responsive stage: preserve the desktop collage; reserve separate sticker
+   bands when the music player, pack and six stickers cannot share a row. */
+.collage-sticker-wrapper {
+  left: var(--sticker-x);
+  top: clamp(160px, var(--sticker-y), calc(100% - 120px));
+  width: min(var(--sticker-size), 15vw);
+  transform: translate(-50%, -50%);
+}
+
+.sticker-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sticker-button:focus-visible {
+  outline: 2px solid var(--ethereal-green);
+  outline-offset: 8px;
+}
+
+.collage-sticker {
+  position: static;
+  width: 100%;
+  max-height: 170px;
+  object-fit: contain;
+  transform: rotate(var(--sticker-rotation));
+}
+
+.sticker-popup {
+  top: 70%;
+  left: 0;
+  width: 220px;
+  max-width: min(220px, 70vw);
+  overflow-wrap: anywhere;
+}
+
+.sticker-popup--left {
+  left: auto;
+  right: 0;
+}
+
+.music-player {
+  width: min(328px, calc(100% - 32px));
+  padding-inline: 14px;
+}
+
+.music-player audio {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+}
+
+.interface {
+  inset-inline: 16px;
+  left: 16px;
+  margin-inline: auto;
+  transform: none;
+  width: auto;
+  max-width: 360px;
+}
+
+.replay-button {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: clamp(12px, 0.85vw, 14px);
+}
+
+.asset-error {
+  position: absolute;
+  top: 45%;
+  inset-inline: 24px;
+  z-index: 3;
+  max-width: 360px;
+  margin-inline: auto;
+  text-align: center;
+  line-height: 1.5;
+}
+
+@media (max-width: 999px) {
+  .experience {
+    min-height: max(900px, 100svh);
+  }
+
+  .scene {
+    top: 210px;
+    bottom: 210px;
+  }
+
+  .collage-layer {
+    top: 96px;
+    bottom: 68px;
+    inset-inline: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 110px 1fr 130px;
+    align-items: center;
+    justify-items: center;
+    gap: 8px;
+  }
+
+  .collage-sticker-wrapper {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: min(var(--sticker-size), 72%);
+    min-width: 44px;
+  }
+
+  .collage-sticker-wrapper:nth-child(n+4) {
+    grid-row: 3;
+  }
+
+  .collage-sticker {
+    max-height: 105px;
+  }
+
+  .sticker-popup {
+    top: 100%;
+  }
+
+  .collage-sticker-wrapper:nth-child(3n+2) .sticker-popup {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .collage-sticker-wrapper:nth-child(3n) .sticker-popup {
+    right: 0;
+    left: auto;
+  }
+
+  .collage-sticker-wrapper:nth-child(n+4) .sticker-popup {
+    top: auto;
+    bottom: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
+}
+
+/* Keep the lower collage clear of the expanded card row. */
+@media (min-width: 1000px) {
+  .experience[data-phase="spread"] .collage-sticker-wrapper:nth-child(5) {
+    top: 85%;
+  }
+
+  .experience[data-phase="spread"] .collage-sticker-wrapper:nth-child(6) {
+    top: 85%;
+    left: 62%;
+  }
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 export default function MusicPlayer() {
   const audioRef = useRef(null);
@@ -9,8 +9,8 @@ export default function MusicPlayer() {
         ref={audioRef}
         src="/audio/diamond_tunes-groove-machine-210089.mp3"
         loop
-        preload="auto"
-        onEnded={() => setPlaying(false)}
+        preload="metadata"
+        aria-label="Background music"
         controls
       />
     </div>

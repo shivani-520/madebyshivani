@@ -33,9 +33,6 @@ export default function CollageBackdrop() {
 
   return (
     <>
-      {/* Background grid stays behind Three.js */}
-      <div className="backdrop" aria-hidden="true" />
-
       {/* Stickers sit above Three.js */}
       <div className="collage-layer">
         {COLLAGE_ITEMS.map((item, index) => {
@@ -50,25 +47,31 @@ export default function CollageBackdrop() {
               key={index}
               className="collage-sticker-wrapper"
               style={{
-                left: `${item.x}%`,
-                top: `${item.y}%`,
+                "--sticker-x": `${item.x}%`,
+                "--sticker-y": `${item.y}%`,
+                "--sticker-size": `${item.size}px`,
+                "--sticker-rotation": `${item.rotate}deg`,
+                zIndex: activeSticker === index ? 1 : 0,
               }}
             >
+              <button
+                type="button"
+                className="sticker-button"
+                aria-label={messages[0]}
+                aria-expanded={activeSticker === index}
+                onKeyDown={(event) => { if (event.key === "Escape") setActiveSticker(null); }}
+                onClick={(event) => handleStickerClick(event, item, index)}
+              >
               <img
                 className="collage-sticker"
                 src={item.image}
                 alt=""
-                onClick={(event) =>
-                  handleStickerClick(event, item, index)
-                }
-                style={{
-                  width: `${item.size}px`,
-                  transform: `translate(-50%, -50%) rotate(${item.rotate}deg)`,
-                }}
+                draggable={false}
               />
+              </button>
 
               {activeSticker === index && (
-                <div className="sticker-popup">
+                <div className={`sticker-popup ${item.x > 60 ? "sticker-popup--left" : ""}`} role="status">
                   {messages[messageIndex]}
                 </div>
               )}

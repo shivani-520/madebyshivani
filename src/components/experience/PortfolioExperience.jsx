@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, events } from "@react-three/fiber";
 import * as THREE from "three";
 import { FOIL_RELEASE_TIME } from "../FoilPack";
 import Scene from "./Scene";
@@ -9,7 +9,10 @@ import useReducedMotion from "../../hooks/useReducedMotion";
 import { CARD_COUNT } from "../../data/projects";
 import { clamp } from "../../utils/animation";
 
+import useDevicePixelRatio from "../../hooks/useDevicePixelRatio";
+
 export default function PortfolioExperience() {
+  const pixelRatio = useDevicePixelRatio();
   const [phase, setPhase] = useState("sealed");
   const [assetStatus, setAssetStatus] = useState("loading");
   const assetsReady = useRef(false);
@@ -86,7 +89,8 @@ export default function PortfolioExperience() {
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       const direction = event.key === "ArrowLeft" ? -1 : 1;
 
-      if (phaseRef.current === "cards") {
+      if (phaseRef.current === "cards" ||
+          (phaseRef.current === "spread" && sceneElement.current?.clientWidth < 1000)) {
         event.preventDefault();
         controls.current?.(direction);
       } else if (phaseRef.current === "spread") {
@@ -113,7 +117,11 @@ export default function PortfolioExperience() {
           : `${CARD_COUNT} project cards. Select a card or use arrow keys.`;
 
   return (
-    <main className={`experience cursor-${cursor}`} data-phase={phase}>
+    <>
+      <div className="backdrop" aria-hidden="true"
+        style={{ "--grid-line": `${Math.max(1, Math.round(pixelRatio)) / pixelRatio}px`,
+          "--grid-step": `${Math.round(40 * pixelRatio) / pixelRatio}px` }} />
+      <main className={`experience cursor-${cursor}`} data-phase={phase}>
       <CollageBackdrop />
 
       <MusicPlayer />
@@ -121,7 +129,7 @@ export default function PortfolioExperience() {
       <div
         ref={sceneElement}
         className="scene"
-        style={{ touchAction: "none" }}
+        style={{ touchAction: "pan-y" }}
         tabIndex={0}
         role="region"
         aria-label={label}
@@ -129,9 +137,20 @@ export default function PortfolioExperience() {
       >
         <Canvas
           eventSource={sceneElement}
-          eventPrefix="client"
+          events={(state) => ({
+            ...events(state),
+            compute(event, current) {
+              const bounds = sceneElement.current?.getBoundingClientRect();
+              if (!bounds?.width || !bounds.height) return;
+              current.pointer.set(
+                (event.clientX - bounds.left) / bounds.width * 2 - 1,
+                -(event.clientY - bounds.top) / bounds.height * 2 + 1
+              );
+              current.raycaster.setFromCamera(current.pointer, current.camera);
+            },
+          })}
           camera={{ position: [0, 0, 7], fov: 25, near: 0.1, far: 30 }}
-          dpr={[1, 1.75]}
+          dpr={pixelRatio}
           gl={{ antialias: true, alpha: true }}
           onCreated={({ gl }) => {
             gl.setClearColor("#000000", 0);
@@ -164,6 +183,9 @@ export default function PortfolioExperience() {
         </Canvas>
       </div>
 
+      {assetStatus === "error" && (
+        <p className="asset-error" role="alert">Pack artwork could not load. Please reload once the original image files are available.</p>
+      )}
       <div className="interface">
         <button
           className="replay-button"
@@ -175,5 +197,6 @@ export default function PortfolioExperience() {
         </button>
       </div>
     </main>
+    </>
   );
 }

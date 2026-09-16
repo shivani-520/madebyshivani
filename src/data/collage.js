@@ -3,8 +3,8 @@ export const COLLAGE_IMAGES = [
     "/images/stickers/arthur-morgan.png",
     "/images/stickers/BLUEWIN.png",
     "/images/stickers/tennis-racket.webp",
-    "/images/stickers//graduation-cap.png",
-    "images/stickers/bolt.png",
+    "/images/stickers/graduation-cap.png",
+    "/images/stickers/bolt.png",
 ];
 
 export const COLLAGE_ITEMS = [
