@@ -11,6 +11,8 @@ import {
   CARD_INSIDE_Y,
   CARD_INSIDE_Z,
   CARD_RETURN_Z,
+  CARD_WIDTH,
+  CARD_HEIGHT,
 } from "../../constants/cards";
 import { clamp, damp, radians, springEase } from "../../utils/animation";
 import { getCardRevealPose } from "../../utils/cardReveal";
@@ -36,13 +38,29 @@ export default function CardStack({
   const flight = useRef(null);
   const spread = useRef({ elapsed: 0, snapshots: null });
   const [hovered, setHovered] = useState(null);
-  const { size, viewport } = useThree();
+  const { size, viewport, camera } = useThree();
 
-  const worldPerPixel = viewport.width / size.width / sceneScale;
-  const exitX = viewport.width / sceneScale / 2 + 1.2;
+  // A temporarily collapsed canvas must not write NaN/Infinity into nodes.
+  const validSize = size.width > 0 && size.height > 0 && sceneScale > 0;
+  const worldPerPixel = validSize ? viewport.width / size.width / sceneScale : 0;
   const narrow = size.width < 600;
-  const rowStep = narrow ? 1.3 : 1.65;
-  const availableWidth = viewport.width / sceneScale * 0.87;
+  const inSpread = phase === "spread" && !narrow;
+  const browsing = phase === "cards" || (phase === "spread" && narrow);
+  // Fit one card, independently of the number of projects. Measure at its
+  // actual depth so perspective doesn't push it outside the canvas.
+  const cardViewport = viewport.getCurrentViewport(
+    camera,
+    new THREE.Vector3(0, 0, CARD_FRONT_Z * sceneScale)
+  );
+  const deckScale = narrow && validSize ? Math.min(
+    cardViewport.width * 0.78 / sceneScale / CARD_WIDTH,
+    cardViewport.height * 0.70 / sceneScale / CARD_HEIGHT
+  ) : 1;
+  const exitX = validSize
+    ? viewport.width / sceneScale / 2 + Math.max(1.2, CARD_WIDTH * deckScale / 2 + 0.2)
+    : 0;
+  const rowStep = CARD_WIDTH + 0.2;
+  const availableWidth = validSize ? viewport.width / sceneScale * 0.87 : 0;
   const rowScale = Math.min(
     1,
     availableWidth / (1.52 + rowStep * Math.max(CARD_COUNT - 1, 0))
@@ -57,12 +75,13 @@ export default function CardStack({
       direction,
       elapsed: 0,
       committed: false,
-      final: viewedCards.current.size === CARD_COUNT - 1,
+      // >= also handles returning to desktop after a complete mobile lap.
+      final: !narrow && viewedCards.current.size >= CARD_COUNT - 1,
     };
 
     setHovered(null);
     feedback("idle");
-  }, [phase, feedback]);
+  }, [phase, feedback, narrow]);
 
   useEffect(() => {
     controls.current = throwCard;
@@ -71,11 +90,28 @@ export default function CardStack({
     };
   }, [controls, throwCard]);
 
+  useEffect(() => {
+    if (!inSpread) {
+      spread.current = { elapsed: 0, snapshots: null };
+      setHovered(null);
+    }
+  }, [inSpread]);
+
   useFrame((_, delta) => {
+    if (!validSize) return;
     const dt = Math.min(delta, 0.05);
     const action = flight.current;
 
     if (action) {
+      // Resize can happen on either side of the commit point. A cancelled
+      // terminal flick must rotate exactly once, even if already committed.
+      if (narrow && action.final) {
+        action.final = false;
+        if (action.committed) {
+          order.current.push(order.current.shift());
+          onActive(order.current[0]);
+        }
+      }
       action.elapsed += dt;
 
       if (action.elapsed >= 0.3 && !action.committed) {
@@ -97,7 +133,7 @@ export default function CardStack({
       }
     }
 
-    if (phase === "spread") {
+    if (inSpread) {
       const state = spread.current;
 
       if (!state.snapshots) {
@@ -155,7 +191,7 @@ export default function CardStack({
       return;
     }
 
-    const reveal = phase !== "cards"
+    const reveal = !browsing
       ? getCardRevealPose(
           phase === "sealed" ? 0 : timeline.current,
           reduced
@@ -208,7 +244,7 @@ export default function CardStack({
       node.position.z = damp(node.position.z, z, speed, dt);
       node.rotation.z = damp(node.rotation.z, rz, speed, dt);
       node.rotation.y = damp(node.rotation.y, ry, speed, dt);
-      node.scale.setScalar(damp(node.scale.x, 1, 15, dt));
+      node.scale.setScalar(damp(node.scale.x, deckScale, 15, dt));
     });
   });
 
@@ -275,7 +311,7 @@ export default function CardStack({
           ]}
           scale={CARD_INITIAL_SCALE}
           onPointerOver={(event) => {
-            if (phase === "spread" && spread.current.elapsed >= 0.96) {
+            if (inSpread && spread.current.elapsed >= 0.96) {
               event.stopPropagation();
               setHovered(index);
               feedback("pointer");
@@ -293,7 +329,7 @@ export default function CardStack({
             if (phase !== "sealed" && !drag.current) feedback("idle");
           }}
           onPointerDown={(event) => {
-            if (phase === "spread") {
+            if (inSpread) {
               event.stopPropagation();
               return;
             }
@@ -336,7 +372,7 @@ export default function CardStack({
           }}
           onClick={(event) => {
             if (
-              phase !== "spread" ||
+              !inSpread ||
               spread.current.elapsed < 0.96 ||
               event.delta > 8
             ) return;
@@ -348,7 +384,7 @@ export default function CardStack({
           <PortfolioCard
             index={index}
             highlighted={
-              phase === "spread" &&
+              inSpread &&
               (hovered === index || selected === index)
             }
           />

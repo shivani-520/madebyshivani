@@ -48,19 +48,21 @@ button {
 -------------------------------- */
 
 .backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
   z-index: 0;
-  overflow: hidden;
-
   pointer-events: none;
 
-  background:
+  background-color: var(--surf-the-web);
+  background-image:
     linear-gradient(rgb(241 236 202 / 7%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(241 236 202 / 7%) 1px, transparent 1px),
-    var(--surf-the-web);
+    linear-gradient(90deg, rgb(241 236 202 / 7%) 1px, transparent 1px);
 
   background-size: 40px 40px;
+  background-position: 0 0;
+  background-repeat: repeat;
 }
 
 
@@ -317,6 +319,10 @@ button {
   pointer-events: none !important;
 }
 
+/* ==========================================================
+   FOIL TRADING CARDS
+   ========================================================== */
+
 .project-card-anchor {
   width: 304px;
   height: 426px;
@@ -324,62 +330,119 @@ button {
   -webkit-user-select: none;
 }
 
-/* Fixed pixel dimensions. Three.js controls movement and responsive scale. */
+/* ---------------- CARD SHELL ---------------- */
+
 .project-card {
-  --card-color: #ad91e8;
+  --card-color: #4f8edc;
+
   position: relative;
   width: 304px;
   height: 426px;
   margin: 0;
-  padding: 6px;
+  padding: 9px;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid var(--card-color);
-  background:
-    linear-gradient(135deg,
-      rgb(255 255 255 / 42%),
-      transparent 21%,
-      rgb(255 255 255 / 7%) 43%,
-      transparent 65%,
-      rgb(255 255 255 / 22%)),
-    linear-gradient(155deg,
-      var(--card-color),
-      #514458 40%,
-      #27222e 66%,
-      var(--card-color));
-  color: #f1edf4;
-  font-family: inherit;
+
+  border: 3px solid #e8d58c;
+
+  color: #171717;
+  font-family: Arial, Helvetica, sans-serif;
   text-align: left;
+
+  /*
+    Coloured foil shell.
+    The project colour now affects the entire card.
+  */
+  background:
+    linear-gradient(115deg,
+      rgb(255 255 255 / 70%) 0%,
+      transparent 16%,
+      rgb(255 236 158 / 35%) 29%,
+      transparent 43%,
+      rgb(181 224 255 / 42%) 56%,
+      transparent 69%,
+      rgb(255 204 241 / 35%) 82%,
+      transparent 100%),
+    radial-gradient(circle at 20% 10%,
+      rgb(255 255 255 / 65%),
+      transparent 25%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-color) 68%, white),
+      var(--card-color) 42%,
+      color-mix(in srgb, var(--card-color) 80%, #30263d));
+
   box-shadow:
-    inset 0 0 0 1px rgb(18 15 25 / 80%),
-    inset 0 0 0 2px rgb(255 255 255 / 16%);
+    inset 0 0 0 2px rgb(255 255 255 / 60%),
+    inset 0 0 0 5px rgb(25 22 28 / 15%),
+    inset 0 0 25px rgb(255 255 255 / 20%),
+    0 3px 8px rgb(0 0 0 / 35%);
+
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  transition: border-color 220ms ease, box-shadow 220ms ease;
+
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease;
 }
+
+/* subtle printed texture */
+
+.project-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  background:
+    repeating-linear-gradient(115deg,
+      transparent 0,
+      transparent 3px,
+      rgb(255 255 255 / 4%) 3px,
+      rgb(255 255 255 / 4%) 4px),
+    radial-gradient(circle at 80% 30%,
+      rgb(255 255 255 / 20%),
+      transparent 32%);
+
+  mix-blend-mode: overlay;
+}
+
+/* ---------------- INNER PRINTED CARD ---------------- */
 
 .project-card__frame {
   position: relative;
   z-index: 1;
+
   display: flex;
   width: 100%;
   height: 100%;
   flex-direction: column;
+
   overflow: hidden;
-  padding: 12px;
-  border: 1px solid rgb(255 255 255 / 17%);
+  padding: 11px 12px 9px;
+
+  border: 2px solid rgb(69 55 31 / 55%);
+  border-radius: 9px;
+
+  /*
+    Cream paper colour keeps the layout readable while the
+    outer border carries each card's elemental colour.
+  */
   background:
-    radial-gradient(ellipse at 95% 0%,
-      color-mix(in srgb, var(--card-color) 17%, transparent),
-      transparent 60%),
-    repeating-linear-gradient(125deg,
-      transparent 0,
-      transparent 5px,
-      rgb(255 255 255 / 1.2%) 5px,
-      rgb(255 255 255 / 1.2%) 6px),
-    #18151f;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 50%);
+    linear-gradient(135deg,
+      rgb(255 255 255 / 65%),
+      transparent 25%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--card-color) 23%, #fff9dc),
+      color-mix(in srgb, var(--card-color) 11%, #f5eac6));
+
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 55%),
+    inset 0 0 16px rgb(83 57 23 / 12%);
 }
+
+/* ---------------- HEADER ---------------- */
 
 .project-card__header {
   display: flex;
@@ -392,98 +455,176 @@ button {
 
 .project-card__heading {
   min-width: 0;
+  flex: 1;
 }
 
 .project-card__title {
   margin: 0;
+
   overflow: hidden;
-  color: #f7f1fb;
-  font-size: 17px;
-  font-weight: 750;
-  line-height: 1.2;
-  letter-spacing: -0.035em;
+
+  color: #191919;
+
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  text-shadow: 0 1px 0 rgb(255 255 255 / 60%);
 }
 
 .project-card__eyebrow {
   display: block;
-  margin-top: 5px;
+  margin-top: 4px;
+
   overflow: hidden;
-  color: var(--card-color);
-  font-size: 7px;
-  font-weight: 700;
+
+  color: color-mix(in srgb, var(--card-color) 75%, #181818);
+
+  font-size: 6px;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
+
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
+/* HP-style project number */
+
 .project-card__number {
   display: flex;
-  min-width: 33px;
+  min-width: 42px;
   flex: 0 0 auto;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 3px;
+
   padding-top: 1px;
-  color: var(--card-color);
+
+  color: #161616;
   font-variant-numeric: tabular-nums;
 }
 
 .project-card__number>span {
-  color: #aa9eb6;
+  color: #5a5042;
   font-size: 6px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.14em;
+  font-weight: 800;
 }
 
 .project-card__number>strong {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: -0.04em;
 }
+
+/* elemental/type orb */
+
+.project-card__number::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+
+  border: 1px solid rgb(50 42 28 / 45%);
+  border-radius: 50%;
+
+  background:
+    radial-gradient(circle at 35% 30%,
+      white 0 7%,
+      transparent 9%),
+    radial-gradient(circle at 40% 35%,
+      color-mix(in srgb, var(--card-color) 40%, white),
+      var(--card-color) 58%,
+      color-mix(in srgb, var(--card-color) 80%, black));
+
+  box-shadow:
+    inset 0 0 3px rgb(255 255 255 / 70%),
+    0 1px 2px rgb(0 0 0 / 25%);
+}
+
+/* ---------------- ART WINDOW ---------------- */
 
 .project-card__image-wrap {
   position: relative;
+
   height: 172px;
   flex: 0 0 172px;
+
   overflow: hidden;
-  border: 1px solid var(--card-color);
-  border-radius: 6px;
-  background: #272130;
+
+  border: 3px solid #d3bb70;
+  border-radius: 2px;
+
+  background: #ddd2ae;
+
   box-shadow:
-    0 0 0 2px #0e0c12,
-    0 0 0 3px rgb(255 255 255 / 10%);
+    0 0 0 1px rgb(54 42 23 / 75%),
+    0 2px 4px rgb(0 0 0 / 32%),
+    inset 0 0 8px rgb(255 255 255 / 35%);
 }
 
 .project-card__image-wrap img {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 5px;
+
+  border-radius: 0;
+
   object-fit: cover;
   object-position: center;
+
   -webkit-user-drag: none;
+
+  filter: saturate(1.06) contrast(1.03);
+}
+
+/* foil on top of artwork */
+
+.project-card__image-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(120deg,
+      transparent 15%,
+      rgb(255 90 140 / 12%) 28%,
+      rgb(255 231 98 / 18%) 38%,
+      rgb(102 236 255 / 18%) 49%,
+      rgb(161 117 255 / 15%) 60%,
+      transparent 74%);
+
+  mix-blend-mode: screen;
+  opacity: 0.6;
 }
 
 .project-card__image-caption {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  padding: 4px 5px;
-  border: 1px solid rgb(255 255 255 / 17%);
-  border-radius: 2px;
-  background: rgb(14 12 19 / 82%);
-  color: #f0eaf4;
+  right: 5px;
+  bottom: 5px;
+  z-index: 2;
+
+  padding: 3px 5px;
+
+  border: 1px solid rgb(61 48 25 / 35%);
+  border-radius: 1px;
+
+  background: rgb(247 235 194 / 86%);
+  color: #332b20;
+
   font-size: 5px;
-  font-weight: 600;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.09em;
 }
+
+/* ---------------- FALLBACK ---------------- */
 
 .project-card__image-fallback {
   display: flex;
@@ -492,55 +633,76 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: 8px;
+
   background:
-    radial-gradient(circle at 50% 30%,
-      color-mix(in srgb, var(--card-color) 24%, transparent),
-      transparent 75%),
-    #221d2c;
-  color: #c5bacf;
+    radial-gradient(circle,
+      color-mix(in srgb, var(--card-color) 45%, white),
+      var(--card-color));
+
+  color: #292219;
   font-size: 9px;
 }
 
 .project-card__image-fallback>strong {
-  color: var(--card-color);
-  font-size: 46px;
-  font-weight: 700;
+  color: rgb(255 255 255 / 75%);
+  font-size: 48px;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: -0.06em;
+
+  text-shadow: 1px 2px 0 rgb(0 0 0 / 20%);
 }
+
+/* ---------------- TYPE / RARITY BAR ---------------- */
 
 .project-card__meta {
   display: flex;
-  height: 33px;
-  flex: 0 0 33px;
+  height: 31px;
+  flex: 0 0 31px;
+
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
+
+  border-bottom: 2px solid color-mix(in srgb, var(--card-color) 55%, #806e43);
 }
 
 .project-card__category {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+
   overflow: hidden;
-  color: var(--card-color);
+
+  color: #252018;
+
   font-size: 7px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .project-card__type-mark {
-  width: 5px;
-  height: 5px;
-  flex: 0 0 5px;
-  border: 1px solid currentColor;
-  border-radius: 1px;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+
+  border: 1px solid rgb(39 32 22 / 50%);
+  border-radius: 50%;
+
+  background:
+    radial-gradient(circle at 35% 30%,
+      rgb(255 255 255 / 90%),
+      transparent 18%),
+    var(--card-color);
+
+  box-shadow:
+    inset 0 0 3px rgb(255 255 255 / 75%),
+    0 1px 1px rgb(0 0 0 / 20%);
 }
 
 .project-card__rarity {
@@ -548,54 +710,71 @@ button {
   flex: 0 0 auto;
   align-items: center;
   gap: 4px;
-  color: #c8bfd3;
+
+  color: #4c4131;
+
   font-size: 7px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .project-card__rarity>span {
-  color: var(--card-color);
-  font-size: 11px;
+  color: color-mix(in srgb, var(--card-color) 75%, #46351d);
+  font-size: 12px;
   line-height: 1;
 }
+
+/* ---------------- DESCRIPTION ---------------- */
 
 .project-card__details {
   min-height: 0;
   flex: 1 1 auto;
-  padding-top: 11px;
+
+  padding: 10px 6px 0;
 }
 
 .project-card__section-label {
   display: block;
-  margin-bottom: 6px;
-  color: #a092af;
+  margin-bottom: 5px;
+
+  color: color-mix(in srgb, var(--card-color) 72%, #352d22);
+
   font-size: 6px;
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
+
   text-transform: uppercase;
 }
 
 .project-card__description {
   display: -webkit-box;
   margin: 0;
+
   overflow: hidden;
-  color: #d8cfe1;
-  font-size: 10px;
-  font-weight: 400;
-  line-height: 1.5;
+
+  color: #28231d;
+
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
+/* ---------------- TECH / "ATTACKS" ---------------- */
+
 .project-card__tech {
   display: flex;
-  min-height: 29px;
-  flex: 0 0 29px;
+  min-height: 30px;
+  flex: 0 0 30px;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+
   overflow: hidden;
+
+  border-top: 1px solid rgb(74 59 33 / 20%);
 }
 
 .project-card__tech-item {
@@ -603,73 +782,115 @@ button {
   min-width: 0;
   align-items: center;
   justify-content: center;
+
   padding: 4px 6px;
+
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 13%);
-  border-color: color-mix(in srgb, var(--card-color) 28%, #292431);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--card-color) 8%, #19151f);
-  color: #e1d8ea;
-  font-size: 7px;
-  font-weight: 500;
+
+  border: 1px solid color-mix(in srgb, var(--card-color) 50%, #6b5d3d);
+
+  border-radius: 8px;
+
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--card-color) 30%, white),
+      color-mix(in srgb, var(--card-color) 18%, #f3e8c3));
+
+  color: #30291e;
+
+  font-size: 6px;
+  font-weight: 800;
   line-height: 1;
+
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  box-shadow: inset 0 1px rgb(255 255 255 / 55%);
 }
+
+/* ---------------- FOOTER ---------------- */
 
 .project-card__footer {
   display: flex;
-  min-height: 23px;
-  flex: 0 0 23px;
+  min-height: 21px;
+  flex: 0 0 21px;
+
   align-items: flex-end;
   justify-content: space-between;
   gap: 6px;
-  margin-top: 5px;
-  padding-top: 8px;
-  border-top: 1px solid rgb(255 255 255 / 10%);
-  color: #a295af;
-  font-size: 6px;
-  font-weight: 500;
+
+  margin-top: 3px;
+  padding-top: 6px;
+
+  border-top: 1px solid rgb(66 52 29 / 35%);
+
+  color: #625541;
+
+  font-size: 5px;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+
   font-variant-numeric: tabular-nums;
 }
 
 .project-card__footer>span:last-child {
   flex: 0 0 auto;
-  color: var(--card-color);
+
+  color: color-mix(in srgb, var(--card-color) 70%, #34291c);
+
+  font-weight: 900;
 }
+
+/* ---------------- HOLOGRAPHIC FOIL ---------------- */
 
 .project-card__shine {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
+
   border-radius: inherit;
-  background:
-    radial-gradient(ellipse at 15% 0%,
-      rgb(255 255 255 / 15%),
-      transparent 45%),
-    linear-gradient(120deg,
-      transparent 30%,
-      rgb(195 222 255 / 5%) 40%,
-      rgb(255 255 255 / 15%) 48%,
-      rgb(235 208 255 / 5%) 55%,
-      transparent 67%);
-  opacity: 0.15;
+
   pointer-events: none;
+
+  background:
+    radial-gradient(ellipse at 18% 5%,
+      rgb(255 255 255 / 70%),
+      transparent 22%),
+    linear-gradient(115deg,
+      transparent 18%,
+      rgb(255 80 155 / 13%) 28%,
+      rgb(255 229 91 / 17%) 37%,
+      rgb(99 237 255 / 20%) 46%,
+      rgb(110 128 255 / 15%) 55%,
+      rgb(224 103 255 / 16%) 64%,
+      transparent 76%);
+
+  mix-blend-mode: screen;
+
+  opacity: 0.18;
+
   transition: opacity 220ms ease;
 }
 
+/* ---------------- ACTIVE / SELECTED ---------------- */
+
 .project-card.is-highlighted {
-  border-color: #f2eafb;
+  border-color: #fff0a9;
+
+  filter:
+    saturate(1.1) brightness(1.04);
+
   box-shadow:
-    inset 0 0 0 1px rgb(18 15 25 / 80%),
-    inset 0 0 0 2px rgb(255 255 255 / 35%),
-    inset 0 0 18px color-mix(in srgb, var(--card-color) 22%, transparent);
+    inset 0 0 0 2px rgb(255 255 255 / 75%),
+    inset 0 0 0 5px rgb(25 22 28 / 10%),
+    inset 0 0 25px rgb(255 255 255 / 30%),
+    0 0 10px rgb(255 236 169 / 55%),
+    0 5px 12px rgb(0 0 0 / 38%);
 }
 
 .project-card.is-highlighted .project-card__shine {
-  opacity: 0.6;
+  opacity: 0.72;
 }
 
 @media (max-width: 600px) {

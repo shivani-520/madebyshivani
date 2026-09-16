@@ -2,12 +2,12 @@ import * as THREE from "three";
 import { FRONT_Z, PACK_OPENING_Y } from "./pack";
 
 export const COLORS = [
-    "#ad91e8",
-    "#729fe6",
-    "#e99697",
-    "#83bea6",
-    "#dec184",
-    "#b9a3d8",
+    "#4f8edc", // water blue
+    "#e85a4f", // fire red
+    "#f4c542", // electric yellow
+    "#69ad58", // grass green
+    "#9b72cf", // psychic purple
+    "#d88745", // fighting orange
 ];
 
 export const getCardColor = (index) => COLORS[index % COLORS.length];
@@ -40,5 +40,5 @@ export const CARD_EXIT_Y =
 export const CARD_RISE_DISTANCE = CARD_EXIT_Y - CARD_INSIDE_Y;
 export const CARD_RETURN_Z = FRONT_Z + 0.08;
 
-export const CARD_HTML_DISTANCE_FACTOR = 2 * 0.96;
+export const CARD_HTML_DISTANCE_FACTOR = 2 * 1.1;
 export const CARD_PRELIFT_DISTANCE = 0.06;

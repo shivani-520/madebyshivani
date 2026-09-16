@@ -14,7 +14,12 @@ export const COLLAGE_ITEMS = [
         y: 7,
         size: 110,
         rotate: -10,
-        description: "That's me 👋",
+        description: [
+            "That's me 👋",
+            "Game programmer 🎮",
+            "Probably debugging something...",
+            "Yep, you clicked me again 😎",
+        ],
     },
     {
         image: COLLAGE_IMAGES[1],
@@ -22,7 +27,11 @@ export const COLLAGE_ITEMS = [
         y: 12,
         size: 120,
         rotate: 7,
-        description: "Arthur Morgan",
+        description: [
+            "Arthur Morgan",
+            "I got TB",
+            "I have a plan...",
+        ],
     },
     {
         image: COLLAGE_IMAGES[2],
@@ -38,7 +47,9 @@ export const COLLAGE_ITEMS = [
         y: 88,
         size: 150,
         rotate: -6,
-        description: "Tennis is one of my favourite sports.",
+        description: [
+            "Tennis is one of my favourite sports 🎾",
+        ],
     },
     {
         image: COLLAGE_IMAGES[4],
@@ -46,7 +57,10 @@ export const COLLAGE_ITEMS = [
         y: 69,
         size: 140,
         rotate: -5,
-        description: "Master of Science in Game Programming 2k25",
+        description: [
+            "Master of Science in Game Programming",
+            "Bachelor of Science in Game Design",
+        ],
     },
     {
         image: COLLAGE_IMAGES[5],
@@ -54,6 +68,9 @@ export const COLLAGE_ITEMS = [
         y: 50,
         size: 200,
         rotate: -10,
-        description: "Bolt <3",
+        description: [
+            "Bolt <3",
+            "RIP",
+        ],
     },
 ];
