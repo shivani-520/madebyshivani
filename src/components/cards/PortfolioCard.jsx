@@ -62,7 +62,7 @@ export default function PortfolioCard({ index, highlighted }) {
         sprite={false}
         center
         position={[0, 0, 0.01]}
-        distanceFactor={CARD_HTML_DISTANCE_FACTOR}
+        scale={0.2}
         zIndexRange={[16777271, 0]}
         wrapperClass="project-card-html"
         className="project-card-anchor"

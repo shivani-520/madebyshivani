@@ -25,7 +25,7 @@ export default function Scene({
   onAssetsChange,
   tearGesture,
 }) {
-  const { viewport, size } = useThree();
+  const { viewport, size, gl } = useThree();
   const { textures, error } = usePackTextures();
   const openingStarted = useRef(false);
 
