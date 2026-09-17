@@ -98,14 +98,10 @@ export default function PortfolioCard({ index, highlighted }) {
                   onError={() => setFailedImage(project.image)}
                 />
               )}
-              <span className="project-card__image-caption" aria-hidden="true">
-                SELECTED WORK / {project.year}
-              </span>
             </div>
 
             <div className="project-card__meta">
               <span className="project-card__category">
-                <span className="project-card__type-mark" aria-hidden="true" />
                 {project.category}
               </span>
               <span className="project-card__rarity">

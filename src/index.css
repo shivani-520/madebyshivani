@@ -497,30 +497,6 @@ button {
   line-height: 1;
 }
 
-/* elemental/type orb */
-
-.project-card__number::after {
-  content: "";
-  width: 16px;
-  height: 16px;
-
-  border: 1px solid rgb(50 42 28 / 45%);
-  border-radius: 50%;
-
-  background:
-    radial-gradient(circle at 35% 30%,
-      white 0 7%,
-      transparent 9%),
-    radial-gradient(circle at 40% 35%,
-      color-mix(in srgb, var(--card-color) 40%, white),
-      var(--card-color) 58%,
-      color-mix(in srgb, var(--card-color) 80%, black));
-
-  box-shadow:
-    inset 0 0 3px rgb(255 255 255 / 70%),
-    0 1px 2px rgb(0 0 0 / 25%);
-}
-
 /* ---------------- ART WINDOW ---------------- */
 
 .project-card__image-wrap {
@@ -659,25 +635,6 @@ button {
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
-}
-
-.project-card__type-mark {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 13px;
-
-  border: 1px solid rgb(39 32 22 / 50%);
-  border-radius: 50%;
-
-  background:
-    radial-gradient(circle at 35% 30%,
-      rgb(255 255 255 / 90%),
-      transparent 18%),
-    var(--card-color);
-
-  box-shadow:
-    inset 0 0 3px rgb(255 255 255 / 75%),
-    0 1px 1px rgb(0 0 0 / 20%);
 }
 
 .project-card__rarity {
