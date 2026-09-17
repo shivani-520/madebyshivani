@@ -7,8 +7,8 @@ import {
   CARD_HEIGHT,
   CARD_PX_PER_UNIT,
   CARD_HTML_DISTANCE_FACTOR,
-  CARD_HTML_HEIGHT,
   CARD_HTML_WIDTH,
+  CARD_HTML_HEIGHT,
   getCardColor,
 } from "../../constants/cards";
 import "./PortfolioCardLink.css";
@@ -53,14 +53,29 @@ export default function PortfolioCard({ index, highlighted }) {
         center
         position={[0, 0, 0.01]}
         distanceFactor={CARD_HTML_DISTANCE_FACTOR}
+        zIndexRange={[16777271, 0]}
+        wrapperClass="project-card-html"
+        className="project-card-anchor"
+        // This prop controls Drei's internal transform wrapper as well.
+        pointerEvents="none"
+        style={{
+          width: CARD_HTML_WIDTH,
+          height: CARD_HTML_HEIGHT,
+          padding: 0,
+          margin: 0,
+          boxSizing: "border-box",
+          pointerEvents: "none",
+        }}
       >
         <article
           className={`project-card ${highlighted ? "is-highlighted" : ""}`}
           style={{
             "--card-color": getCardColor(index),
-            width: `${CARD_HTML_WIDTH}px`,
-            height: `${CARD_HTML_HEIGHT}px`,
+            width: "100%",
+            height: "100%",
           }}
+          aria-label={`${project.title}, project ${project.number}`}
+          data-has-link={showLink ? "true" : undefined}
         >
           <div className="project-card__frame">
             <header className="project-card__header">
