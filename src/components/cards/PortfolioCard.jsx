@@ -51,6 +51,8 @@ export default function PortfolioCard({ index, highlighted }) {
         zIndexRange={[16777271, 0]}
         wrapperClass="project-card-html"
         className="project-card-anchor"
+        // This prop controls Drei's internal transform wrapper as well.
+        pointerEvents="none"
         style={{ pointerEvents: "none" }}
       >
         <article

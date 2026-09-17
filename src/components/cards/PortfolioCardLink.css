@@ -1,11 +1,5 @@
 /* Keep the existing global stylesheet. These scoped additions override it. */
 
-/* Two classes beat the original one-class wildcard !important rules,
-   regardless of import order. Only the anchor becomes a pointer target. */
-.project-card .project-card__link {
-    pointer-events: auto !important;
-}
-
 /* Reclaim space only on cards that actually have a valid project link. */
 .project-card[data-has-link="true"] .project-card__frame {
     padding: 8px 12px 7px;
