@@ -52,8 +52,8 @@ export default function PortfolioCard({ index, highlighted }) {
           roughness={0.5}
           side={THREE.FrontSide}
         />
-
-             <Html
+      </mesh>
+      <Html
         transform
         sprite={false}
         position={[0, 0, 0.01]}
@@ -164,8 +164,6 @@ export default function PortfolioCard({ index, highlighted }) {
           <div className="project-card__shine" aria-hidden="true" />
         </article>
       </Html>
-      </mesh>
- 
     </group>
   );
 }
