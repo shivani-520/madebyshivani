@@ -50,6 +50,7 @@ export default function PortfolioCard({ index, highlighted }) {
       </mesh>
       <Html
         transform
+        sprite={false}
         center
         position={[0, 0, 0.01]}
         distanceFactor={CARD_HTML_DISTANCE_FACTOR}
