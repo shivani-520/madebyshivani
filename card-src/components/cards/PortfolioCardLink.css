@@ -1,0 +1,94 @@
+/* Keep the existing global stylesheet. These scoped additions override it. */
+
+/* Two classes beat the original one-class wildcard !important rules,
+   regardless of import order. Only the anchor becomes a pointer target. */
+.project-card .project-card__link {
+    pointer-events: auto !important;
+}
+
+/* Reclaim space only on cards that actually have a valid project link. */
+.project-card[data-has-link="true"] .project-card__frame {
+    padding: 8px 12px 7px;
+}
+
+.project-card[data-has-link="true"] .project-card__header {
+    min-height: 41px;
+    flex-basis: 41px;
+}
+
+.project-card[data-has-link="true"] .project-card__image-wrap {
+    height: 128px;
+    flex-basis: 128px;
+}
+
+.project-card[data-has-link="true"] .project-card__meta {
+    height: 25px;
+    flex-basis: 25px;
+}
+
+.project-card[data-has-link="true"] .project-card__details {
+    padding: 6px 6px 4px;
+}
+
+.project-card[data-has-link="true"] .project-card__section-label {
+    margin-bottom: 4px;
+}
+
+.project-card[data-has-link="true"] .project-card__tech {
+    min-height: 34px;
+    flex-basis: 34px;
+    gap: 3px;
+}
+
+.project-card[data-has-link="true"] .project-card__tech-item {
+    padding: 3px 6px;
+}
+
+.project-card[data-has-link="true"] .project-card__footer {
+    min-height: 16px;
+    flex-basis: 16px;
+    padding-top: 4px;
+}
+
+.project-card .project-card__link {
+    display: flex;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    margin-top: 3px;
+    padding: 6px 10px;
+
+    border: 2px solid color-mix(in srgb, var(--card-color) 45%, #46351d);
+    border-radius: 5px;
+
+    background: linear-gradient(180deg,
+            color-mix(in srgb, var(--card-color) 20%, #fff9dc),
+            color-mix(in srgb, var(--card-color) 38%, #f5eac6));
+
+    color: #241d15;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-decoration: none;
+
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 75%),
+        0 1px 2px rgb(0 0 0 / 18%);
+
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.project-card .project-card__link:hover {
+    background: #fff9dc;
+    border-color: #46351d;
+}
+
+.project-card .project-card__link:active {
+    box-shadow: inset 0 1px 3px rgb(0 0 0 / 25%);
+}
