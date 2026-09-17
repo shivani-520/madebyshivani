@@ -38,6 +38,19 @@ export default function PortfolioCard({ index, highlighted }) {
       <mesh>
         <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
         <meshStandardMaterial
+          color={getCardColor(index)}
+          metalness={0.15}
+          roughness={0.5}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0, 0, -0.006]}>
+        <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
+        <meshStandardMaterial
+          color="#211c2b"
+          metalness={0.1}
+          roughness={0.6}
+          side={THREE.BackSide}
           transparent
           opacity={0}
           depthWrite={false}
@@ -46,6 +59,7 @@ export default function PortfolioCard({ index, highlighted }) {
       </mesh>
       <Html
         transform
+        center
         position={[0, 0, 0.01]}
         distanceFactor={CARD_HTML_DISTANCE_FACTOR}
         zIndexRange={[16777271, 0]}

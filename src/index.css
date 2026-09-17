@@ -1028,8 +1028,9 @@ button {
 
 @media (max-width: 999px) {
   .scene {
-    top: 120px;
-    bottom: 100px;
+    inset: 0;
+    top: 0;
+    bottom: 0;
   }
 
   .collage-layer {
