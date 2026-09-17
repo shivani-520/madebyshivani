@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { PROJECTS, CARD_COUNT } from "../../data/projects";
@@ -31,6 +32,13 @@ function stopLinkEvent(event) {
 }
 
 export default function PortfolioCard({ index, highlighted }) {
+  const gl = useThree((state) => state.gl);
+
+  const htmlPortal = useMemo(
+    () => ({ current: gl.domElement.parentElement }),
+    [gl]
+  );
+
   const project = PROJECTS[index];
   const [failedImage, setFailedImage] = useState(null);
 
@@ -49,6 +57,7 @@ export default function PortfolioCard({ index, highlighted }) {
         />
       </mesh>
       <Html
+        portal={htmlPortal}
         transform
         sprite={false}
         center
@@ -57,7 +66,6 @@ export default function PortfolioCard({ index, highlighted }) {
         zIndexRange={[16777271, 0]}
         wrapperClass="project-card-html"
         className="project-card-anchor"
-        // This prop controls Drei's internal transform wrapper as well.
         pointerEvents="none"
         style={{
           width: CARD_HTML_WIDTH,

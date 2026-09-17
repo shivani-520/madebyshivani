@@ -158,7 +158,7 @@ export default function PortfolioExperience() {
             position: [0, 0, 7],
             fov: 45,
           }}
- 
+          resize={{ debounce: 0 }}
         >
           <Scene
             phase={phase}
@@ -180,7 +180,7 @@ export default function PortfolioExperience() {
         </Canvas>
 
         <div className="scene-ui">
-          Made By Shivani 2
+          Made By Shivani 3
         </div>
       </div>
 

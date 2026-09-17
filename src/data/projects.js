@@ -1,7 +1,7 @@
 export const CARD_IMAGES = [
     "/images/artwork/games.webp",
     "/images/artwork/pivotal.webp",
-    "/images/artwork/vr configurator.webp",
+    "/images/artwork/tg-jones.webp",
     "/images/artwork/iceland.webp",
     "/images/artwork/rl-agents.webp",
     "/images/artwork/vr configurator.webp",
