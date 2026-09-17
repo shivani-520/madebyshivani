@@ -140,27 +140,31 @@ export default function PortfolioExperience() {
             ...events(state),
             compute(event, current) {
               const bounds = sceneElement.current?.getBoundingClientRect();
+
               if (!bounds?.width || !bounds.height) return;
+
               current.pointer.set(
-                (event.clientX - bounds.left) / bounds.width * 2 - 1,
-                -(event.clientY - bounds.top) / bounds.height * 2 + 1
+                ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+                -((event.clientY - bounds.top) / bounds.height) * 2 + 1
               );
-              current.raycaster.setFromCamera(current.pointer, current.camera);
+
+              current.raycaster.setFromCamera(
+                current.pointer,
+                current.camera
+              );
             },
           })}
-          camera={{ position: [0, 0, 7], fov: 25, near: 0.1, far: 30 }}
-          dpr={pixelRatio}
-          gl={{ antialias: true, alpha: true }}
-          onCreated={({ gl }) => {
-            gl.setClearColor("#000000", 0);
-            gl.toneMapping = THREE.ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.1;
+          camera={{
+            position: [0, 0, 3],
+            fov: 45,
+            near: 0.1,
+            far: 100,
           }}
-          fallback={
-            <div className="fallback">
-              Enable WebGL in your browser to open this pack.
-            </div>
-          }
+          dpr={pixelRatio}
+          gl={{
+            antialias: true,
+            alpha: true,
+          }}
         >
           <Scene
             phase={phase}
@@ -180,6 +184,10 @@ export default function PortfolioExperience() {
             tearGesture={tearGesture}
           />
         </Canvas>
+
+        <div className="scene-ui">
+          Made By Shivani
+        </div>
       </div>
 
       {assetStatus === "error" && (

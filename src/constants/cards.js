@@ -17,6 +17,10 @@ export const CARD_FRONT_Z = 0.65;
 
 export const CARD_WIDTH = 1.52;
 export const CARD_HEIGHT = 2.13;
+
+// HTML pixels per Three.js world unit
+export const CARD_PX_PER_UNIT = 200;
+
 export const CARD_STACK_DEPTH = 0.04;
 export const CARD_INITIAL_SCALE = 0.96;
 

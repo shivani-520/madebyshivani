@@ -190,17 +190,24 @@ button {
 .scene {
   position: absolute;
   inset: 0;
-  z-index: 1;
-  overflow: clip;
-  touch-action: none;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
 
 .scene canvas {
-  display: block;
-  touch-action: none;
-  background: transparent;
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.scene-ui {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+
+  /* Important if it shouldn't interfere with R3F dragging */
+  pointer-events: none;
 }
 
 .scene:focus-visible {
@@ -303,8 +310,6 @@ button {
    ========================================================== */
 
 .project-card-anchor {
-  width: 304px;
-  height: 426px;
   user-select: none;
   -webkit-user-select: none;
 }

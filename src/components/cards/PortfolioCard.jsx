@@ -5,6 +5,7 @@ import { PROJECTS, CARD_COUNT } from "../../data/projects";
 import {
   CARD_WIDTH,
   CARD_HEIGHT,
+  CARD_PX_PER_UNIT,
   CARD_HTML_DISTANCE_FACTOR,
   getCardColor,
 } from "../../constants/cards";
@@ -72,7 +73,11 @@ export default function PortfolioCard({ index, highlighted }) {
       >
         <article
           className={`project-card ${highlighted ? "is-highlighted" : ""}`}
-          style={{ "--card-color": getCardColor(index) }}
+          style={{
+            "--card-color": getCardColor(index),
+            width: `${CARD_WIDTH * CARD_PX_PER_UNIT}px`,
+            height: `${CARD_HEIGHT * CARD_PX_PER_UNIT}px`,
+          }}
           aria-label={`${project.title}, project ${project.number}`}
           data-has-link={showLink ? "true" : undefined}
         >
