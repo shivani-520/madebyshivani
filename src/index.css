@@ -294,7 +294,6 @@ button {
 
 .project-card__link {
   pointer-events: auto;
-  touch-action: manipulation;
   position: relative;
   z-index: 10;
 }
