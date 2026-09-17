@@ -129,7 +129,6 @@ export default function PortfolioExperience() {
       <div
         ref={sceneElement}
         className="scene"
-        style={{ touchAction: "pan-y" }}
         tabIndex={0}
         role="region"
         aria-label={label}

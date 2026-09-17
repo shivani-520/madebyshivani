@@ -49,7 +49,6 @@ export default function PortfolioCard({ index, highlighted }) {
         position={[0, 0, 0.01]}
         distanceFactor={CARD_HTML_DISTANCE_FACTOR}
         zIndexRange={[16777271, 0]}
-        pointerEvents="none"
         wrapperClass="project-card-html"
         className="project-card-anchor"
         style={{ pointerEvents: "none" }}
@@ -124,16 +123,8 @@ export default function PortfolioCard({ index, highlighted }) {
                 rel="noopener noreferrer"
                 aria-label={`View ${project.title} project (opens in a new tab)`}
                 draggable={false}
-                onPointerDown={stopLinkEvent}
-                onPointerMove={stopLinkEvent}
-                onPointerUp={stopLinkEvent}
-                onPointerCancel={stopLinkEvent}
-                onClick={stopLinkEvent}
-                onDoubleClick={stopLinkEvent}
-                onAuxClick={stopLinkEvent}
-                onContextMenu={stopLinkEvent}
-                onKeyDown={stopLinkEvent}
-                onKeyUp={stopLinkEvent}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               >
                 View Project
               </a>

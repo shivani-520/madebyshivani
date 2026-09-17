@@ -192,14 +192,14 @@ button {
   inset: 0;
   z-index: 1;
   overflow: clip;
-  touch-action: pan-y;
+  touch-action: none;
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .scene canvas {
   display: block;
-  touch-action: pan-y;
+  touch-action: none;
   background: transparent;
 }
 
@@ -287,11 +287,16 @@ button {
 
 /* Pointer input passes through the HTML to the physical R3F cards. */
 .project-card-html,
-.project-card-html *,
 .project-card-anchor,
-.project-card-anchor *,
 .project-card {
-  pointer-events: none !important;
+  pointer-events: none;
+}
+
+.project-card__link {
+  pointer-events: auto;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 10;
 }
 
 /* ==========================================================
