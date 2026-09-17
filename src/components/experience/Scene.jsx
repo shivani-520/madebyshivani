@@ -36,12 +36,7 @@ export default function Scene({
   const packRoot = useRef();
   const stageRoot = useRef();
   const heightFraction = 0.52;
-  const sceneScale = Math.min(
-    viewport.height * heightFraction / HEIGHT,
-    viewport.width / 3.65,
-    // Bound the pack on very tall/4K displays without stretching its artwork.
-    viewport.height * 620 / Math.max(size.height, 1) / HEIGHT
-  );
+  const sceneScale = 1;
 
   useFrame(({ pointer, clock }, delta) => {
     const dt = Math.min(delta, 0.05);
