@@ -180,7 +180,7 @@ export default function PortfolioExperience() {
         </Canvas>
 
         <div className="scene-ui">
-          Made By Shivani
+          Made By Shivani 2
         </div>
       </div>
 
