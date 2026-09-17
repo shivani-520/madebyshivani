@@ -21,6 +21,13 @@ export const CARD_HEIGHT = 2.13;
 // HTML pixels per Three.js world unit
 export const CARD_PX_PER_UNIT = 200;
 
+// HTML design dimensions
+export const CARD_HTML_WIDTH = CARD_WIDTH * CARD_PX_PER_UNIT;
+export const CARD_HTML_HEIGHT = CARD_HEIGHT * CARD_PX_PER_UNIT;
+
+// Tune this once so HTML exactly overlays the mesh.
+export const CARD_HTML_DISTANCE_FACTOR = 2;
+
 export const CARD_STACK_DEPTH = 0.04;
 export const CARD_INITIAL_SCALE = 0.96;
 
@@ -44,5 +51,4 @@ export const CARD_EXIT_Y =
 export const CARD_RISE_DISTANCE = CARD_EXIT_Y - CARD_INSIDE_Y;
 export const CARD_RETURN_Z = FRONT_Z + 0.08;
 
-export const CARD_HTML_DISTANCE_FACTOR = 2;
 export const CARD_PRELIFT_DISTANCE = 0.06;
