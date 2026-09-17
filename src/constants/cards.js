@@ -40,5 +40,5 @@ export const CARD_EXIT_Y =
 export const CARD_RISE_DISTANCE = CARD_EXIT_Y - CARD_INSIDE_Y;
 export const CARD_RETURN_Z = FRONT_Z + 0.08;
 
-export const CARD_HTML_DISTANCE_FACTOR = 2 * 1.1;
+export const CARD_HTML_DISTANCE_FACTOR = 2;
 export const CARD_PRELIFT_DISTANCE = 0.06;

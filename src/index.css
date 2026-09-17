@@ -315,10 +315,12 @@ button {
   --card-color: #4f8edc;
 
   position: relative;
-  width: 304px;
-  height: 426px;
+  width: 100%;
+  height: 100%;
+
   margin: 0;
   padding: 9px;
+
   overflow: hidden;
   isolation: isolate;
 

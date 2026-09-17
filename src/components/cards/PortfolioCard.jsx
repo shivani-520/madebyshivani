@@ -30,6 +30,7 @@ function stopLinkEvent(event) {
 export default function PortfolioCard({ index, highlighted }) {
   const project = PROJECTS[index];
   const [failedImage, setFailedImage] = useState(null);
+
   const imageFailed = failedImage === project.image;
   const showLink = hasProjectUrl(project.url);
 
@@ -44,7 +45,7 @@ export default function PortfolioCard({ index, highlighted }) {
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh position={[0, 0, -0.006]}>
+      {/* <mesh position={[0, 0, -0.006]}>
         <planeGeometry args={[CARD_WIDTH, CARD_HEIGHT]} />
         <meshStandardMaterial
           color="#211c2b"
@@ -56,7 +57,7 @@ export default function PortfolioCard({ index, highlighted }) {
           depthWrite={false}
           colorWrite={false}
         />
-      </mesh>
+      </mesh> */}
       <Html
         transform
         center
