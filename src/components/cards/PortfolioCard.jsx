@@ -31,13 +31,10 @@ function stopLinkEvent(event) {
   event.stopPropagation();
 }
 
+const CARD_HTML_SCALE = 0.2;
+
 export default function PortfolioCard({ index, highlighted }) {
   const gl = useThree((state) => state.gl);
-
-  const htmlPortal = useMemo(
-    () => ({ current: gl.domElement.parentElement }),
-    [gl]
-  );
 
   const project = PROJECTS[index];
   const [failedImage, setFailedImage] = useState(null);
@@ -53,27 +50,27 @@ export default function PortfolioCard({ index, highlighted }) {
           color={getCardColor(index)}
           metalness={0.15}
           roughness={0.5}
-          side={THREE.DoubleSide}
+          side={THREE.FrontSide}
         />
-      </mesh>
-      <Html
-        portal={htmlPortal}
+
+             <Html
         transform
         sprite={false}
-        center
         position={[0, 0, 0.01]}
-        scale={0.2}
+        scale={CARD_HTML_SCALE}
         zIndexRange={[16777271, 0]}
         wrapperClass="project-card-html"
         className="project-card-anchor"
-        pointerEvents="none"
         style={{
           width: CARD_HTML_WIDTH,
           height: CARD_HTML_HEIGHT,
-          padding: 0,
           margin: 0,
+          padding: 0,
           boxSizing: "border-box",
           pointerEvents: "none",
+          position: "absolute",
+          left: -CARD_HTML_WIDTH / 2,
+          top: -CARD_HTML_HEIGHT / 2,
         }}
       >
         <article
@@ -167,6 +164,8 @@ export default function PortfolioCard({ index, highlighted }) {
           <div className="project-card__shine" aria-hidden="true" />
         </article>
       </Html>
+      </mesh>
+ 
     </group>
   );
 }
