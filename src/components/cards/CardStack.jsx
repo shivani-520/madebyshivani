@@ -52,7 +52,7 @@ export default function CardStack({
     camera,
     new THREE.Vector3(0, 0, CARD_FRONT_Z * sceneScale)
   );
-  const OUT_OF_PACK_SCALE = narrow ? 1.2 : 1.5;
+  const OUT_OF_PACK_SCALE = narrow ? 1.1 : 1.5;
 
   const deckScale = validSize ? Math.min(
     narrow ? 1.65 : 1,

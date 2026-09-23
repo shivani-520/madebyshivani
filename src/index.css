@@ -390,7 +390,7 @@ button {
 
 .interface {
   position: absolute;
-  bottom: max(75px, env(safe-area-inset-bottom));
+  top: max(75px, env(safe-area-inset-bottom));
 
   left: 50%;
   z-index: 3;
