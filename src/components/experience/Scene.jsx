@@ -105,10 +105,10 @@ export default function Scene({
   return (
     <>
       {/* <ambientLight intensity={1.05} /> */}
-      {/* <directionalLight position={[-3, 5, 6]} color="#f4ecff" intensity={2.8} />
-      <directionalLight position={[4, 1, 5]} color="#becde3" intensity={1.25} /> */}
+      <directionalLight position={[-3, 5, 6]} color="#f4ecff" intensity={2} />
+      {/* <directionalLight position={[4, 1, 5]} color="#becde3" intensity={1.25} /> */}
 
-      <Environment preset="warehouse" />
+      <Environment preset="city" />
       
       {textures && (
         <group key={cycle} ref={stageRoot} scale={sceneScale}>

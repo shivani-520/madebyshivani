@@ -11,6 +11,257 @@ PROJECTS.forEach((project) => {
   }
 });
 
+function HolographicMaterial({ texture }) {
+  const material = useMemo(() => {
+    const mat = new THREE.MeshPhysicalMaterial({
+      map: texture,
+
+      // Base card coating
+      roughness: 0.22,
+      metalness: 0.05,
+      clearcoat: 1,
+      clearcoatRoughness: 0.12,
+      envMapIntensity: 1.2,
+    });
+
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.holoStrength = { value: 0.3 };
+
+      // --------------------------------------------------
+      // VERTEX SHADER
+      // --------------------------------------------------
+
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <common>",
+        `
+        #include <common>
+
+        varying vec3 vHoloWorldPosition;
+        varying vec3 vHoloWorldNormal;
+        `
+      );
+
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <worldpos_vertex>",
+        `
+        #include <worldpos_vertex>
+
+        vHoloWorldPosition = worldPosition.xyz;
+
+        // World-space normal.
+        // This rotates with the card.
+        vHoloWorldNormal = normalize(
+          mat3(modelMatrix) * objectNormal
+        );
+        `
+      );
+
+      // --------------------------------------------------
+      // FRAGMENT SHADER
+      // --------------------------------------------------
+
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <common>",
+        `
+        #include <common>
+
+        varying vec3 vHoloWorldPosition;
+        varying vec3 vHoloWorldNormal;
+
+        uniform float holoStrength;
+
+        vec3 rainbow(float t) {
+          vec3 color;
+
+          color.r =
+            0.5 +
+            0.5 * cos(
+              6.28318 * (t + 0.00)
+            );
+
+          color.g =
+            0.5 +
+            0.5 * cos(
+              6.28318 * (t + 0.33)
+            );
+
+          color.b =
+            0.5 +
+            0.5 * cos(
+              6.28318 * (t + 0.67)
+            );
+
+          return color;
+        }
+        `
+      );
+
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <map_fragment>",
+        `
+        #include <map_fragment>
+
+        // ------------------------------------------------
+        // VIEW + REFLECTION
+        // ------------------------------------------------
+
+        vec3 N = normalize(vHoloWorldNormal);
+
+        // Surface -> camera
+        vec3 V = normalize(
+          cameraPosition - vHoloWorldPosition
+        );
+
+        // Camera ray reflected off the card.
+        //
+        // This is the important part:
+        // as the card rotates, this direction changes in
+        // world space like an environment reflection.
+        vec3 R = reflect(-V, N);
+
+
+        // ------------------------------------------------
+        // REFLECTION MOVEMENT
+        // ------------------------------------------------
+
+        // Project the reflected world direction onto a
+        // diagonal direction.
+        //
+        // This means X/Y card tilt moves the rainbow
+        // differently instead of only changing intensity.
+        float reflectionShift =
+            R.x * 0.85
+          + R.y * 0.55
+          + R.z * 0.15;
+
+
+        // ------------------------------------------------
+        // CARD-SPACE FOIL DIRECTION
+        // ------------------------------------------------
+
+        // Gives the holographic foil its diagonal shape.
+        float diagonal =
+            vMapUv.x * 0.75
+          + vMapUv.y * 0.35;
+
+
+        // ------------------------------------------------
+        // RAINBOW POSITION
+        // ------------------------------------------------
+
+        // UV controls where the band exists on the card.
+        //
+        // Reflection direction controls where it MOVES
+        // when the card is tilted.
+        float bandPosition =
+            diagonal * 0.40
+          + reflectionShift * 2.0;
+
+        vec3 holoColor =
+          rainbow(bandPosition * 1.35);
+
+
+        // ------------------------------------------------
+        // MAIN REFLECTION BAND
+        // ------------------------------------------------
+
+        float sweep =
+          fract(bandPosition * 0.70);
+
+        float band =
+          1.0 -
+          smoothstep(
+            0.08,
+            0.34,
+            abs(sweep - 0.5)
+          );
+
+        band = pow(band, 2.0);
+
+
+        // ------------------------------------------------
+        // SECONDARY FOIL DETAIL
+        // ------------------------------------------------
+
+        // Smaller interference pattern that also moves
+        // with the reflected direction.
+        float foil =
+          sin(
+              diagonal * 18.0
+            + reflectionShift * 10.0
+          );
+
+        foil =
+          foil * 0.5 + 0.5;
+
+        foil =
+          pow(foil, 3.0);
+
+
+        // ------------------------------------------------
+        // FRESNEL
+        // ------------------------------------------------
+
+        float facing =
+          max(dot(N, V), 0.0);
+
+        float fresnel =
+          pow(
+            1.0 - facing,
+            1.6
+          );
+
+
+        // ------------------------------------------------
+        // FINAL HOLOGRAPHIC STRENGTH
+        // ------------------------------------------------
+
+        float holo =
+            band * 0.70
+          + foil * 0.12
+          + fresnel * 0.18;
+
+        holo =
+          clamp(holo, 0.0, 1.0);
+
+
+        // ------------------------------------------------
+        // APPLY RAINBOW
+        // ------------------------------------------------
+
+        vec3 rainbowReflection =
+            holoColor
+          * holo
+          * holoStrength;
+
+        // Screen blend.
+        //
+        // Keeps the original project artwork visible
+        // instead of painting opaque rainbow over it.
+        diffuseColor.rgb =
+          1.0 -
+          (1.0 - diffuseColor.rgb) *
+          (1.0 - rainbowReflection);
+        `
+      );
+
+      mat.userData.shader = shader;
+    };
+
+    mat.customProgramCacheKey = () =>
+      "portfolio-holographic-card-v2";
+
+    return mat;
+  }, [texture]);
+
+  return (
+    <primitive
+      object={material}
+      attach="material"
+    />
+  );
+}
+
 export default function PortfolioCard({ index, highlighted }) {
   const project = PROJECTS[index];
   const texture = useTexture(project.image);
@@ -33,16 +284,12 @@ export default function PortfolioCard({ index, highlighted }) {
 
   return (
     <group>
-      <mesh>
+      <mesh castShadow receiveShadow>
         <planeGeometry args={[width, height]} />
 
-          <meshStandardMaterial
-            map={texture}
-
-            roughness={0.18}
-            metalness={0.15}
-          />
+        <HolographicMaterial texture={texture} />
       </mesh>
+      
       {project.url && (
       <Html
         transform

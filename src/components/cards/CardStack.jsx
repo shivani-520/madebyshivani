@@ -36,6 +36,12 @@ export default function CardStack({
   const viewedCards = useRef(new Set());
   const drag = useRef(null);
   const flight = useRef(null);
+
+  const hoverTilt = useRef({
+    x: 0,
+    y: 0,
+  });
+
   const spread = useRef({ elapsed: 0, snapshots: null });
   const [hovered, setHovered] = useState(null);
   const { size, viewport, camera } = useThree();
@@ -191,8 +197,41 @@ export default function CardStack({
           node.position.x = damp(node.position.x, targetX, 14, dt);
           node.position.y = damp(node.position.y, targetY, 14, dt);
           node.position.z = damp(node.position.z, targetZ, 14, dt);
-          node.rotation.y = damp(node.rotation.y, 0, 14, dt);
-          node.rotation.z = damp(node.rotation.z, 0, 14, dt);
+
+          const MAX_TILT = 0.10;
+
+          let targetRotationX = 0;
+          let targetRotationY = 0;
+
+          if (hovered === id) {
+            targetRotationY =
+              hoverTilt.current.x * MAX_TILT;
+
+            targetRotationX =
+              -hoverTilt.current.y * MAX_TILT;
+          }
+
+          node.rotation.x = damp(
+            node.rotation.x,
+            targetRotationX,
+            12,
+            dt
+          );
+
+          node.rotation.y = damp(
+            node.rotation.y,
+            targetRotationY,
+            12,
+            dt
+          );
+
+          node.rotation.z = damp(
+            node.rotation.z,
+            0,
+            14,
+            dt
+          );
+
           node.scale.setScalar(damp(node.scale.x, targetScale, 14, dt));
         }
       });
@@ -334,8 +373,16 @@ export default function CardStack({
             }
           }}
           onPointerOut={() => {
-            setHovered((current) => current === index ? null : current);
-            if (phase !== "sealed" && !drag.current) feedback("idle");
+            setHovered((current) =>
+              current === index ? null : current
+            );
+
+            hoverTilt.current.x = 0;
+            hoverTilt.current.y = 0;
+
+            if (phase !== "sealed" && !drag.current) {
+              feedback("idle");
+            }
           }}
           onPointerDown={(event) => {
             if (inSpread) {
@@ -368,9 +415,32 @@ export default function CardStack({
             feedback("drag");
           }}
           onPointerMove={(event) => {
-            if (!drag.current || drag.current.id !== event.pointerId) return;
-            event.stopPropagation();
-            updateDrag(event);
+            // Existing drag behaviour
+            if (drag.current && drag.current.id === event.pointerId) {
+              event.stopPropagation();
+              updateDrag(event);
+              return;
+            }
+
+            // Hover tilt while cards are spread
+            if (
+              inSpread &&
+              spread.current.elapsed >= 0.96 &&
+              hovered === index
+            ) {
+              event.stopPropagation();
+
+              const uv = event.uv;
+
+              if (uv) {
+                // Convert UV 0 -> 1 into -1 -> 1
+                const x = (uv.x - 0.5) * 2;
+                const y = (uv.y - 0.5) * 2;
+
+                hoverTilt.current.x = x;
+                hoverTilt.current.y = y;
+              }
+            }
           }}
           onPointerUp={(event) => end(event)}
           onPointerCancel={(event) => end(event, true)}
