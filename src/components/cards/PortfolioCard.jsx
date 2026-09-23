@@ -295,7 +295,7 @@ export default function PortfolioCard({ index, highlighted }) {
         transform
         center
         occlude
-        position={[0, -height / 2 + 0.2, 0.02]}
+        position={[0, -height / 2 + 0.3, 0.02]}
         scale={0.2}
         style={{ pointerEvents: "auto" }}
       >
