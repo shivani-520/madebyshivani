@@ -390,7 +390,7 @@ button {
 
 .interface {
   position: absolute;
-  bottom: max(100px, env(safe-area-inset-bottom));
+  bottom: max(24px, env(safe-area-inset-bottom));
 
   left: 50%;
   z-index: 3;
@@ -439,7 +439,7 @@ button {
 
 .replay-button--image img {
   display: block;
-  width: 50px;
+  width: 35px;
   /* change this to whatever size you want */
   height: auto;
   user-select: none;
