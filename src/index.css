@@ -92,7 +92,7 @@ button {
   z-index: 0;
   pointer-events: none;
 
-  background-color: var(--surf-the-web);
+  background-color: #222;
   background-image:
     linear-gradient(rgb(241 236 202 / 7%) var(--grid-line, 1px), transparent var(--grid-line, 1px)),
     linear-gradient(90deg, rgb(241 236 202 / 7%) var(--grid-line, 1px), transparent var(--grid-line, 1px));

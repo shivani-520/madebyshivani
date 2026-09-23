@@ -22,6 +22,13 @@ const FLAP_FADE_START = 0.82;
 const FLAP_FADE_DURATION = 0.24;
 const PACK_ANIMATION_END = 1.12;
 
+// Resting foil shape, in local world units.
+const BODY_BULGE = 0.028;
+const SEAL_WIDTH = 0.045;
+const CRIMP_STRENGTH = 0.0006;
+const CRIMP_SPACING = 0.045;
+const REST_FOLD_STRENGTH = 0.0007;
+
 // Geometry and force controls, in local world units.
 const TEAR_EDGE_AMPLITUDE = 0.018;
 const TEAR_EDGE_INSET = 0.045;
@@ -151,8 +158,6 @@ const FRAGMENT_SHADER = `
   uniform float uOpacity;
   uniform float uFront;
   uniform float uShading;
-  uniform float uHintShimmer;
-  uniform float uHintSweep;
 
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -174,18 +179,32 @@ const FRAGMENT_SHADER = `
       referenceNormal = -referenceNormal;
     }
 
+    // Main virtual light.
     vec3 lightDirection = normalize(vec3(-0.35, 0.55, 1.0));
 
+    // Difference from the original flat foil lighting.
+    // This means the printed artwork stays relatively unchanged until
+    // the foil actually bends/wrinkles.
     float diffuse =
       dot(n, lightDirection) -
       dot(referenceNormal, lightDirection);
 
-    float sheen = pow(
-      max(dot(reflect(-lightDirection, n), viewDirection), 0.0),
-      24.0
+    // Sharp reflection on the deformed foil.
+    float sharpSpecular = pow(
+      max(
+        dot(
+          reflect(-lightDirection, n),
+          viewDirection
+        ),
+        0.0
+      ),
+      60.0
     );
 
-    float referenceSheen = pow(
+    // Equivalent reflection on the original flat surface.
+    // Subtracting this prevents the whole unopened pack from
+    // suddenly acquiring a giant permanent white highlight.
+    float referenceSharpSpecular = pow(
       max(
         dot(
           reflect(-lightDirection, referenceNormal),
@@ -193,31 +212,128 @@ const FRAGMENT_SHADER = `
         ),
         0.0
       ),
-      24.0
+      60.0
     );
 
+    // Broader metallic reflection.
+    float broadSpecular = pow(
+      max(
+        dot(
+          reflect(-lightDirection, n),
+          viewDirection
+        ),
+        0.0
+      ),
+      8.0
+    );
+
+    float referenceBroadSpecular = pow(
+      max(
+        dot(
+          reflect(-lightDirection, referenceNormal),
+          viewDirection
+        ),
+        0.0
+      ),
+      8.0
+    );
+
+    // Fresnel:
+    // surfaces facing away from the camera become more reflective.
+    float fresnel = pow(
+      1.0 - clamp(dot(n, viewDirection), 0.0, 1.0),
+      3.0
+    );
+
+    // Reference Fresnel keeps the undeformed artwork visually stable.
+    float referenceFresnel = pow(
+      1.0 - clamp(
+        dot(referenceNormal, viewDirection),
+        0.0,
+        1.0
+      ),
+      3.0
+    );
+
+    // Allow substantially more contrast than the original shader.
     float brightness = clamp(
       1.0 + uShading * (
-        0.26 * diffuse +
-        0.10 * (sheen - referenceSheen)
+        0.38 * diffuse +
+        0.14 * (
+          broadSpecular -
+          referenceBroadSpecular
+        )
       ),
-      0.88,
-      1.10
+      0.70,
+      1.35
     );
 
-    float exposed = smoothstep(0.0, 0.025, uFront - vUv.x);
+    float exposed = smoothstep(
+      0.0,
+      0.025,
+      uFront - vUv.x
+    );
 
     float edge = (
-      1.0 - smoothstep(0.0008, 0.0035, vEdgeDistance)
+      1.0 -
+      smoothstep(
+        0.0008,
+        0.0035,
+        vEdgeDistance
+      )
     ) * exposed;
 
+    // Start with the original printed artwork.
     vec3 printedColor = artwork.rgb * brightness;
-    printedColor += vec3(0.018) * edge;
-    float hintBand = 1.0 - smoothstep(
-      0.0, 0.18, abs(vUv.x - uHintSweep + vUv.y * 0.035)
-    );
 
-    gl_FragColor = vec4(printedColor, artwork.a * uOpacity);
+    // Tight bright reflection.
+    printedColor +=
+      vec3(1.0) *
+      max(
+        0.0,
+        sharpSpecular -
+        referenceSharpSpecular
+      ) *
+      0.32 *
+      uShading;
+
+    // Wider cool metallic reflection.
+    printedColor +=
+      vec3(0.82, 0.86, 0.95) *
+      max(
+        0.0,
+        broadSpecular -
+        referenceBroadSpecular
+      ) *
+      0.10 *
+      uShading;
+
+    // Fresnel reflection around curled / angled foil.
+    printedColor +=
+      vec3(0.78, 0.84, 0.95) *
+      max(
+        0.0,
+        fresnel -
+        referenceFresnel
+      ) *
+      0.16 *
+      uShading;
+
+    // Very fine foil texture.
+    // Kept deliberately subtle so it doesn't become glitter.
+    float micro =
+      sin(vUv.x * 310.0 + vUv.y * 170.0) *
+      sin(vUv.y * 420.0 - vUv.x * 90.0);
+
+    printedColor += vec3(micro * 0.008) * uShading;
+
+    // Brighten the newly exposed torn edge.
+    printedColor += vec3(0.025) * edge;
+
+    gl_FragColor = vec4(
+      printedColor,
+      artwork.a * uOpacity
+    );
 
     ${OUTPUT_COLOR_CHUNK}
   }
@@ -234,6 +350,46 @@ function makeUniforms(texture) {
     uHintShimmer: { value: 0 },
     uHintSweep: { value: -0.2 },
   };
+}
+
+// Both pieces sample the same pack-space surface, including their shared edge.
+// Only Z changes: the artwork's XY coordinates and UVs remain untouched.
+function restingZ(rig, x, y) {
+  const nx = x / (rig.width * 0.5);
+  const ny = y / rig.halfHeight;
+  const dx = Math.max(0, rig.width * 0.5 - Math.abs(x));
+  const dy = Math.max(0, rig.halfHeight - Math.abs(y));
+  const seal = rig.sealWidth;
+
+  // A flat sealed band meets a soft shoulder with zero slope at its start.
+  const shoulderX = smooth((dx - seal) / rig.sealTransition);
+  const shoulderY = smooth((dy - seal) / rig.sealTransition);
+  const fullness =
+    Math.pow(Math.max(0, 1 - nx * nx), 0.7) *
+    Math.pow(Math.max(0, 1 - ny * ny), 0.7) *
+    shoulderX * shoulderY;
+  const asymmetry = 1 + 0.045 * nx - 0.03 * ny + 0.025 * nx * ny;
+
+  // Broad, shallow tension marks; much quieter than the grip wrinkles.
+  const folds = REST_FOLD_STRENGTH * fullness * (
+    gaussian((nx + 0.48 * ny - 0.2) / 0.2) -
+    0.7 * gaussian((nx - 0.36 * ny + 0.35) / 0.25)
+  );
+
+  // Crimps run across each seal. Phase/amplitude variation is deterministic,
+  // and wavelengths respect the existing (nonuniform) grid's sampling limit.
+  const horizontalSeal = 1 - smooth(dy / seal);
+  const verticalSeal = (1 - smooth(dx / seal)) * (1 - horizontalSeal);
+  const phaseX = 2 * Math.PI * x / rig.crimpSpacingX +
+    0.23 * Math.sin(nx * 9 + 0.4);
+  const phaseY = 2 * Math.PI * y / rig.crimpSpacingY +
+    0.21 * Math.sin(ny * 8 - 0.6);
+  const crimp = CRIMP_STRENGTH * (
+    horizontalSeal * Math.sin(phaseX) * (0.88 + 0.12 * Math.sin(nx * 17)) +
+    verticalSeal * Math.sin(phaseY) * (0.88 + 0.12 * Math.sin(ny * 13 + 0.8))
+  );
+
+  return BODY_BULGE * fullness * asymmetry + folds + crimp;
 }
 
 function buildPiece(geometry, rig, isFlap) {
@@ -273,11 +429,12 @@ function buildPiece(geometry, rig, isFlap) {
 
       positions[offset] = x;
       positions[offset + 1] = y;
-      normals[offset + 2] = 1;
       column[i] = col;
 
       const restX = positions[offset];
       const restY = positions[offset + 1];
+
+      positions[offset + 2] = restingZ(rig, restX, restY);
 
       uv[i * 2] = (restX + rig.width / 2) / rig.width;
       uv[i * 2 + 1] = (restY + rig.halfHeight) / rig.height;
@@ -387,6 +544,10 @@ function buildRig(
     width,
     height,
     halfHeight: height / 2,
+    sealWidth: Math.min(SEAL_WIDTH, Math.min(width, height) * 0.08),
+    sealTransition: Math.max(SEAL_WIDTH * 2, Math.min(width, height) * 0.06),
+    crimpSpacingX: Math.max(CRIMP_SPACING, 4 * width / WIDTH_SEGMENTS),
+    crimpSpacingY: CRIMP_SPACING,
     baseY: openingY - TEAR_EDGE_INSET,
 
     pullGripX: -width * 0.43,
@@ -443,8 +604,27 @@ function buildRig(
       0.65 + 0.35 * Math.sin(u * 6.2 + 0.4);
   }
 
+  // Body rows are widest at the bottom; include flap rows for unusual cuts.
+  const maxBodyStep = 1 - Math.pow(1 - 1 / BODY_ROWS, 1.3);
+  let maxRowStep = 0;
+  for (let col = 0; col < COLUMNS; col += 1) {
+    maxRowStep = Math.max(
+      maxRowStep,
+      (rig.edge[col] + rig.halfHeight) * maxBodyStep,
+      (rig.halfHeight - rig.edge[col]) / FLAP_ROWS
+    );
+  }
+  rig.crimpSpacingY = Math.max(CRIMP_SPACING, 4 * maxRowStep);
+
   rig.body = buildPiece(bodyGeometry, rig, false);
   rig.flap = buildPiece(flapGeometry, rig, true);
+
+  // Initial highlights must match the curved surface before the first frame.
+  updateNormals(rig.body);
+  updateNormals(rig.flap);
+  weldAttachedNormals(rig);
+  rig.body.restNormals = rig.body.normals.slice();
+  rig.flap.restNormals = rig.flap.normals.slice();
 
   return rig;
 }
@@ -616,7 +796,9 @@ function deformPiece(piece, rig, isFlap) {
       0.006 * nearFront -
       0.0035 * damaged * lip;
 
+    // Interaction offsets build on the precomputed foil shape.
     let z =
+      rest[offset + 2] +
       piece.pinch[offset + 2] * rig.grip +
       pullWeight * rig.targetZ +
       0.009 *
@@ -756,11 +938,7 @@ function weldAttachedNormals(rig) {
 
 function resetPiece(piece) {
   piece.positions.set(piece.rest);
-  piece.normals.fill(0);
-
-  for (let i = 2; i < piece.normals.length; i += 3) {
-    piece.normals[i] = 1;
-  }
+  piece.normals.set(piece.restNormals);
 
   piece.geometry.attributes.position.needsUpdate = true;
   piece.geometry.attributes.normal.needsUpdate = true;
