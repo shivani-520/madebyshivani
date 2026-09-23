@@ -52,22 +52,28 @@ export default function CardStack({
     camera,
     new THREE.Vector3(0, 0, CARD_FRONT_Z * sceneScale)
   );
+  const OUT_OF_PACK_SCALE = narrow ? 1.2 : 1.5;
+
   const deckScale = validSize ? Math.min(
     narrow ? 1.65 : 1,
     cardViewport.width * 0.78 / sceneScale / CARD_WIDTH,
     cardViewport.height * 0.70 / sceneScale / CARD_HEIGHT
-  ) : 1;
+  ) * OUT_OF_PACK_SCALE : 1;
   const exitX = validSize
     ? viewport.width / sceneScale / 2 + Math.max(1.2, CARD_WIDTH * deckScale / 2 + 0.2)
     : 0;
-  const rowStep = CARD_WIDTH + 0.2;
+  const rowStep = CARD_WIDTH + 0.05;
   const highlightedViewport = viewport.getCurrentViewport(camera,
     new THREE.Vector3(0, 0, sceneScale));
   const availableWidth = validSize ? highlightedViewport.width / sceneScale * 0.87 : 0;
+
+  const ROW_SCALE_MULTIPLIER = 1.1;
+
   const rowScale = Math.min(
     1,
     availableWidth / (CARD_WIDTH * 1.5 + rowStep * Math.max(CARD_COUNT - 1, 0))
-  );
+  ) * ROW_SCALE_MULTIPLIER;
+
   const centerIndex = (CARD_COUNT - 1) / 2;
 
   const throwCard = useCallback((direction) => {
