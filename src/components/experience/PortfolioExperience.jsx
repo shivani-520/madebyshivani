@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { Canvas, events } from "@react-three/fiber";
 import * as THREE from "three";
 import { FOIL_RELEASE_TIME } from "../FoilPack";
@@ -33,6 +33,8 @@ export default function PortfolioExperience() {
   const controls = useRef(null);
   const sceneElement = useRef(null);
   const reduced = useReducedMotion();
+  const [emailCopied, setEmailCopied] = useState(false);
+  const [ukTime, setUKTime] = useState("");
 
   const open = useCallback((manual = false) => {
     if (phaseRef.current !== "sealed" || !assetsReady.current) return;
@@ -103,6 +105,42 @@ export default function PortfolioExperience() {
       }
     }
   }
+
+  const copyEmail = async () => {
+    const email = "shivani.d.sharma@outlook.com";
+
+    try {
+      await navigator.clipboard.writeText(email);
+
+      setEmailCopied(true);
+
+      setTimeout(() => {
+        setEmailCopied(false);
+      }, 1800);
+    } catch (error) {
+      console.error("Could not copy email:", error);
+    }
+  };
+
+  useEffect(() => {
+    const updateUKTime = () => {
+      const time = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).format(new Date());
+
+      setUKTime(time);
+    };
+
+    updateUKTime();
+
+    const interval = setInterval(updateUKTime, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const label = assetStatus !== "ready"
     ? assetStatus === "error"
@@ -179,24 +217,52 @@ export default function PortfolioExperience() {
           />
         </Canvas>
 
-        <div className="scene-ui">
-          Made By Shivani
-        </div>
+        <nav className="portfolio-nav" aria-label="Portfolio navigation">
+          <a className="portfolio-nav__brand" href="/">
+            MadeByShivani
+          </a>
+
+          <div className="portfolio-nav__links">
+            {/* <a className="portfolio-nav__link" href="/about">
+              About
+            </a> */}
+          </div>
+        </nav>
+
+        <footer className="portfolio-footer">
+          <div className="portfolio-contact">
+            <button
+              type="button"
+              className="portfolio-nav__link portfolio-contact__button"
+              onClick={copyEmail}
+            >
+              {emailCopied ? "Email copied" : "shivani.d.sharma@outlook.com"}
+            </button>
+          </div>
+
+          <span>UK - {ukTime}</span>
+        </footer>
       </div>
 
       {assetStatus === "error" && (
         <p className="asset-error" role="alert">Pack artwork could not load. Please reload once the original image files are available.</p>
       )}
-      <div className="interface">
-        <button
-          className="replay-button"
-          onClick={replay}
-          disabled={phase !== "cards" && phase !== "spread"}
-          tabIndex={phase === "cards" || phase === "spread" ? 0 : -1}
-        >
-          Open another pack
-        </button>
-      </div>
+      {(phase === "cards" || phase === "spread") && (
+        <div className="interface">
+          <button
+            className="replay-button replay-button--image"
+            onClick={replay}
+            aria-label="Open another pack"
+            title="Open another pack"
+          >
+            <img
+              src="/images/icons/replay.png"
+              alt=""
+              draggable="false"
+            />
+          </button>
+        </div>
+      )}
     </main>
     </>
   );

@@ -1,8 +1,15 @@
+@font-face {
+  font-family: "Bagnard Sans";
+  src: url("/fonts/BagnardSans.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   --ethereal-green: #F1ECCA;
   --super-sonic: #3073B7;
   --surf-the-web: #203C7F;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: "Bagnard Sans", sans-serif;
   color: #fff;
   color-scheme: dark;
   font-synthesis: none;
@@ -230,14 +237,133 @@ button {
   display: block;
 }
 
-.scene-ui {
+/* --------------------------------
+   PORTFOLIO NAV
+-------------------------------- */
+
+.portfolio-nav {
   position: absolute;
-  top: 20px;
+  top: max(20px, env(safe-area-inset-top));
   left: 20px;
+  right: 20px;
   z-index: 10;
 
-  /* Important if it shouldn't interfere with R3F dragging */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
   pointer-events: none;
+}
+
+.portfolio-nav a {
+  color: #fff;
+  font-size: clamp(12px, 0.9vw, 15px);
+  line-height: 1;
+  text-decoration: none;
+
+  pointer-events: auto;
+
+  transition: text-decoration 160ms ease;
+}
+
+.portfolio-nav__brand {
+  font-weight: 400;
+}
+
+.portfolio-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.portfolio-nav a,
+.portfolio-contact__button {
+  position: relative;
+  text-decoration: none;
+}
+
+.portfolio-nav a::after,
+.portfolio-contact__button::after {
+  content: "";
+  position: absolute;
+
+  left: 0;
+  bottom: -3px;
+
+  width: 100%;
+  height: 1px;
+
+  background: currentColor;
+
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 250ms ease;
+}
+
+.portfolio-nav a:hover::after,
+.portfolio-contact__button:hover::after {
+  transform: scaleX(1);
+}
+
+/* --------------------------------
+   PORTFOLIO CONTACT
+-------------------------------- */
+.portfolio-contact {
+  position: relative;
+}
+
+.portfolio-contact__button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+
+  pointer-events: auto;
+}
+
+/* --------------------------------
+   PORTFOLIO FOOTER
+-------------------------------- */
+
+.portfolio-footer {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  color: #fff;
+  font-size: clamp(11px, 0.8vw, 14px);
+  line-height: 1;
+
+  pointer-events: none;
+}
+
+.portfolio-footer a,
+.portfolio-footer span {
+  color: inherit;
+}
+
+.portfolio-footer a {
+  text-decoration: none;
+  pointer-events: auto;
+
+  transition: opacity 160ms ease;
+}
+
+.portfolio-footer a:hover {
+  opacity: 0.65;
+}
+
+.portfolio-footer a:focus-visible {
+  outline: 1px solid var(--ethereal-green);
+  outline-offset: 5px;
 }
 
 .scene:focus-visible {
@@ -264,7 +390,8 @@ button {
 
 .interface {
   position: absolute;
-  bottom: max(26px, env(safe-area-inset-bottom));
+  bottom: max(100px, env(safe-area-inset-bottom));
+
   left: 50%;
   z-index: 3;
   width: min(90%, 360px);
@@ -297,19 +424,41 @@ button {
   outline-offset: 5px;
 }
 
-.replay-button {
-  color: #fff;
-  font-size: 9px;
-  line-height: 1.5;
-  letter-spacing: 0.025em;
-}
-
-.replay-button span {
-  margin-left: 5px;
-}
 
 .replay-button:disabled {
   pointer-events: none;
+}
+
+.replay-button--image {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.replay-button--image img {
+  display: block;
+  width: 50px;
+  /* change this to whatever size you want */
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.replay-button--image:hover img {
+  transform: scale(1.08);
+}
+
+.replay-button--image:active img {
+  transform: scale(0.96);
+}
+
+.replay-button--image:focus-visible {
+  outline: 1px solid var(--ethereal-green);
+  outline-offset: 6px;
 }
 
 .fallback {
@@ -1158,4 +1307,24 @@ button {
   *::after {
     animation: none !important;
   }
+}
+
+.project-button {
+  display: inline-block;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  box-shadow: #111;
+  border-radius: 3px;
+  background: #c7c7c7;
+  color: #111;
+  font: 700 10px Arial, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.project-button:hover,
+.project-button:focus-visible {
+  background: var(--ethereal-green);
+  color: var(--surf-the-web);
 }

@@ -1,10 +1,10 @@
 export const CARD_IMAGES = [
-    "/images/artwork/games.webp",
-    "/images/artwork/pivotal.webp",
-    "/images/artwork/tg-jones.webp",
-    "/images/artwork/iceland.webp",
-    "/images/artwork/rl-agents.webp",
-    "/images/artwork/vr configurator.webp",
+    "/images/cards/game-card.png",
+    "/images/cards/pivotal-card.png",
+    "/images/cards/tgjones-card.png",
+    "/images/cards/iceland-card.png",
+    "/images/cards/uav-card.png",
+    "/images/cards/vrconfig-card.png",
 ];
 
 // Replace each example.com URL with that project's real URL.
