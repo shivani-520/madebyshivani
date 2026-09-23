@@ -250,16 +250,10 @@ export default function PortfolioExperience() {
       {(phase === "cards" || phase === "spread") && (
         <div className="interface">
           <button
-            className="replay-button replay-button--image"
+            className="replay-button"
             onClick={replay}
-            aria-label="Open another pack"
-            title="Open another pack"
           >
-            <img
-              src="/images/icons/replay.png"
-              alt=""
-              draggable="false"
-            />
+            Open another pack
           </button>
         </div>
       )}
