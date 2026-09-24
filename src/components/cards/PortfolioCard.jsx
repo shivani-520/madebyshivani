@@ -287,7 +287,14 @@ export default function PortfolioCard({ index, highlighted }) {
       <mesh castShadow receiveShadow>
         <planeGeometry args={[width, height]} />
 
-        <HolographicMaterial texture={texture} />
+          <meshPhysicalMaterial
+            map={texture}
+            roughness={0.18}
+            metalness={0}
+            clearcoat={1}
+            clearcoatRoughness={0.08}
+            envMapIntensity={1.5}
+          />
       </mesh>
       
       {project.url && (
@@ -295,7 +302,7 @@ export default function PortfolioCard({ index, highlighted }) {
         transform
         center
         occlude
-        position={[0, -height / 2 + 0.3, 0.02]}
+        position={[0, -height / 2 + 0.15, 0.02]}
         scale={0.2}
         style={{ pointerEvents: "auto" }}
       >

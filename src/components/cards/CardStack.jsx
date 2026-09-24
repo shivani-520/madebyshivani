@@ -165,8 +165,10 @@ export default function CardStack({
         const snapshot = state.snapshots[id];
         const elapsed = state.elapsed - id * 0.06;
         const eased = springEase(elapsed / 0.7);
+
         const interactive = state.elapsed >= 0.96;
-        const highlighted = interactive && (hovered === id || selected === id);
+        const highlighted = interactive && hovered === id;
+
         const targetX = (id - centerIndex) * rowStep * rowScale;
         const targetY = highlighted ? 0.11 : 0;
         const targetZ = highlighted ? 1.0 : 0.43 + id * 0.006;
@@ -463,8 +465,7 @@ export default function CardStack({
           <PortfolioCard
             index={index}
             highlighted={
-              inSpread &&
-              (hovered === index || selected === index)
+              inSpread && hovered === index
             }
           />
         </group>
