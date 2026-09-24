@@ -23,7 +23,7 @@ const FLAP_FADE_DURATION = 0.24;
 const PACK_ANIMATION_END = 1.12;
 
 // Resting foil shape, in local world units.
-const BODY_BULGE = 0.028;
+const BODY_BULGE = 0.04;
 const SEAL_WIDTH = 0.045;
 const CRIMP_STRENGTH = 0.0006;
 const CRIMP_SPACING = 0.045;

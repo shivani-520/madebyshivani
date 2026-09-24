@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+import { Environment, OrbitControls } from "@react-three/drei";
 
 import CardStack from "../cards/CardStack";
 import BoosterPack from "../pack/BoosterPack";
@@ -64,21 +64,31 @@ export default function Scene({
         dt
       );
 
+      const tiltIntensity = 2;
+
       packRoot.current.rotation.x = damp(
         packRoot.current.rotation.x,
-        sealed && !reduced ? -pointer.y * radians(3) : 0,
+        sealed && !reduced
+          ? -pointer.y * radians(3 * tiltIntensity)
+          : 0,
         10,
         dt
       );
+
       packRoot.current.rotation.y = damp(
         packRoot.current.rotation.y,
-        sealed && !reduced ? pointer.x * radians(5) : 0,
+        sealed && !reduced
+          ? pointer.x * radians(5 * tiltIntensity)
+          : 0,
         10,
         dt
       );
+
       packRoot.current.rotation.z = damp(
         packRoot.current.rotation.z,
-        sealed && !reduced ? pointer.x * radians(0.5) : 0,
+        sealed && !reduced
+          ? pointer.x * radians(0.5 * tiltIntensity)
+          : 0,
         10,
         dt
       );
