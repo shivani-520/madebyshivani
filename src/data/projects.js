@@ -44,7 +44,7 @@ export const PROJECTS = [
         rarity: "Rare",
         number: "003",
         year: "2026",
-        url: "https://tgjonesdemo.vercel.app/preview.html", // TODO: replace with your project URL.
+        url: "https://youtu.be/QZgVUUNBEA0", // TODO: replace with your project URL.
     },
     {
         title: "Iceland Interactive Fridge",
