@@ -9,6 +9,7 @@ import { CARD_EXIT_Y, CARD_HEIGHT } from "../../constants/cards";
 import { HEIGHT } from "../../constants/pack";
 import { OPEN_DURATION } from "../../constants/animation";
 import { damp, radians } from "../../utils/animation";
+import SceneStickers from "../stickers/SceneStickers";
 
 export default function Scene({
   phase,
@@ -46,51 +47,51 @@ export default function Scene({
     // The cards rise above the foil before settling. Fit that complete motion,
     // not just the sealed pack, and ease back to the original resting size.
     if (stageRoot.current) {
-      const target = phase === "opening" ? Math.min(sceneScale,
-        viewport.height * 0.44 / (CARD_EXIT_Y + CARD_HEIGHT / 2 + 0.2)) : sceneScale;
-      stageRoot.current.scale.setScalar(reduced ? target : damp(stageRoot.current.scale.x, target, 20, dt));
+      const target =
+        phase === "opening"
+          ? Math.min(
+              sceneScale,
+              (viewport.height * 0.44) / (CARD_EXIT_Y + CARD_HEIGHT / 2 + 0.2),
+            )
+          : sceneScale;
+      stageRoot.current.scale.setScalar(
+        reduced ? target : damp(stageRoot.current.scale.x, target, 20, dt),
+      );
     }
 
     // Keep the drag plane stable while a pointer owns the flap.
     if (packRoot.current && !tearGesture.current) {
-      const idleY = sealed && !reduced
-        ? Math.sin(clock.elapsedTime * 1.5) * 0.03
-        : 0;
+      const idleY =
+        sealed && !reduced ? Math.sin(clock.elapsedTime * 1.5) * 0.03 : 0;
 
       packRoot.current.position.y = damp(
         packRoot.current.position.y,
         idleY,
         10,
-        dt
+        dt,
       );
 
       const tiltIntensity = 2;
 
       packRoot.current.rotation.x = damp(
         packRoot.current.rotation.x,
-        sealed && !reduced
-          ? -pointer.y * radians(3 * tiltIntensity)
-          : 0,
+        sealed && !reduced ? -pointer.y * radians(3 * tiltIntensity) : 0,
         10,
-        dt
+        dt,
       );
 
       packRoot.current.rotation.y = damp(
         packRoot.current.rotation.y,
-        sealed && !reduced
-          ? pointer.x * radians(5 * tiltIntensity)
-          : 0,
+        sealed && !reduced ? pointer.x * radians(5 * tiltIntensity) : 0,
         10,
-        dt
+        dt,
       );
 
       packRoot.current.rotation.z = damp(
         packRoot.current.rotation.z,
-        sealed && !reduced
-          ? pointer.x * radians(0.5 * tiltIntensity)
-          : 0,
+        sealed && !reduced ? pointer.x * radians(0.5 * tiltIntensity) : 0,
         10,
-        dt
+        dt,
       );
     }
 
@@ -104,10 +105,7 @@ export default function Scene({
       return;
     }
 
-    timeline.current = Math.min(
-      OPEN_DURATION,
-      timeline.current + dt
-    );
+    timeline.current = Math.min(OPEN_DURATION, timeline.current + dt);
 
     if (timeline.current >= OPEN_DURATION) finish();
   });
@@ -118,8 +116,10 @@ export default function Scene({
       <directionalLight position={[-3, 5, 6]} color="#f4ecff" intensity={1} />
       {/* <directionalLight position={[4, 1, 5]} color="#becde3" intensity={1.25} /> */}
 
-      <Environment preset="city" environmentIntensity={1}/>
-      
+      <Environment preset="city" environmentIntensity={1} />
+
+      <SceneStickers />
+
       {textures && (
         <group key={cycle} ref={stageRoot} scale={sceneScale}>
           <group ref={packRoot}>
