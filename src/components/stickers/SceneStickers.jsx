@@ -18,11 +18,11 @@ const STICKERS = [
   },
   {
     src: "/images/stickers/graduation-cap.png",
-    position: [3.4, 1.3, -1],
+    position: [3.2, 1.9, -1],
     mobilePosition: [1.2, 2.5, -1],
     rotation: [0, 0, 0],
     size: 1.3,
-    mobileSize: 0.9,
+    mobileSize: 1,
     message: [
       "MSc Game Development (Programming) at Kingston University",
       "BSc Game Design at Leeds Beckett University",
@@ -31,11 +31,11 @@ const STICKERS = [
   },
   {
     src: "/images/stickers/bolt.png",
-    position: [3.5, -1.8, -1],
+    position: [3.2, -1.8, -1],
     mobilePosition: [1.2, -2.5, -1],
     rotation: [0, 0, 0.15],
     size: 1.5,
-    mobileSize: 1,
+    mobileSize: 1.2,
     squish: true,
   },
 ];
@@ -300,8 +300,8 @@ function TennisStickers({ onClick }) {
 
   const ballStartPosition = isMobile ? [-1, -2.3, -0.9] : [-2.8, -1.6, -1];
 
-  const racketSize = isMobile ? 0.8 : 1.5;
-  const ballSize = isMobile ? 0.3 : 0.5;
+  const racketSize = isMobile ? 1 : 1.5;
+  const ballSize = isMobile ? 0.3 : 0.4;
 
   const racketTexture = useTexture("/images/stickers/tennis-racket.png");
 
