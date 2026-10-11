@@ -1,15 +1,24 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Environment, OrbitControls } from "@react-three/drei";
-
-import CardStack from "../cards/CardStack";
 import BoosterPack from "../pack/BoosterPack";
+import CardStack from "../cards/CardStack";
 import usePackTextures from "../../hooks/usePackTextures";
-import { CARD_EXIT_Y, CARD_HEIGHT } from "../../constants/cards";
-import { HEIGHT } from "../../constants/pack";
 import { OPEN_DURATION } from "../../constants/animation";
-import { damp, radians } from "../../utils/animation";
-import SceneStickers from "../stickers/SceneStickers";
+import { HEIGHT, WIDTH } from "../../constants/pack";
+import { damp, progress } from "../../utils/animation";
+import ReflectiveFloor from "../../materials/ReflectiveFloor";
+import StarsBackground from "../scene/Stars";
+import TwinklingStars from "../scene/TwinklingStars";
+
+function CameraSetup() {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.lookAt(0, -0.5, 0);
+  }, [camera]);
+
+  return null;
+}
 
 export default function Scene({
   phase,
@@ -17,137 +26,134 @@ export default function Scene({
   open,
   finish,
   feedback,
-  onActive,
-  onViewed,
-  onSpread,
-  onSelected,
-  selected,
-  controls,
   reduced,
   cycle,
   onAssetsChange,
   tearGesture,
+  active,
+  flipped,
+  onNavigate,
+  onFlip,
 }) {
-  const { viewport, size, gl } = useThree();
-  const { textures, error } = usePackTextures();
-  const openingStarted = useRef(false);
-
+  const { viewport, gl } = useThree();
+  const { textures } = usePackTextures();
+  const root = useRef();
+  const pack = useRef();
   useEffect(() => {
-    onAssetsChange(error ? "error" : textures ? "ready" : "loading");
-  }, [textures, error, onAssetsChange]);
-
-  const packRoot = useRef();
-  const stageRoot = useRef();
-  const heightFraction = 0.52;
-  const sceneScale = 1;
-
+    onAssetsChange(textures ? "ready" : "loading");
+  }, [textures, onAssetsChange]);
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const lost = (event) => {
+      event.preventDefault();
+      onAssetsChange("unavailable");
+    };
+    canvas.addEventListener("webglcontextlost", lost);
+    return () => canvas.removeEventListener("webglcontextlost", lost);
+  }, [gl, onAssetsChange]);
   useFrame(({ pointer, clock }, delta) => {
     const dt = Math.min(delta, 0.05);
-    const sealed = phase === "sealed";
-    // The cards rise above the foil before settling. Fit that complete motion,
-    // not just the sealed pack, and ease back to the original resting size.
-    if (stageRoot.current) {
-      const target =
-        phase === "opening"
-          ? Math.min(
-              sceneScale,
-              (viewport.height * 0.44) / (CARD_EXIT_Y + CARD_HEIGHT / 2 + 0.2),
-            )
-          : sceneScale;
-      stageRoot.current.scale.setScalar(
-        reduced ? target : damp(stageRoot.current.scale.x, target, 20, dt),
+    if (phase === "opening") {
+      timeline.current = Math.min(
+        OPEN_DURATION,
+        timeline.current + dt * (reduced ? 3 : 1),
       );
+      if (timeline.current >= OPEN_DURATION) finish();
     }
-
-    // Keep the drag plane stable while a pointer owns the flap.
-    if (packRoot.current && !tearGesture.current) {
-      const idleY =
-        sealed && !reduced ? Math.sin(clock.elapsedTime * 1.5) * 0.03 : 0;
-
-      packRoot.current.position.y = damp(
-        packRoot.current.position.y,
-        idleY,
-        10,
+    if (!root.current) return;
+    // Keep the full extraction arc inside the stage on narrow/short displays.
+    const opening = phase === "opening";
+    const scale =
+      phase === "cards"
+        ? Math.min(
+            (viewport.height * 0.55) / 2.13,
+            (viewport.width * 0.55) / 1.52,
+            1.45,
+          )
+        : Math.min(
+            (viewport.height * 0.7) / (opening ? 5.6 : HEIGHT),
+            (viewport.width * 0.7) / WIDTH,
+            1.25,
+          );
+    root.current.scale.setScalar(
+      reduced ? scale : damp(root.current.scale.x, scale, 9, dt),
+    );
+    root.current.position.y = damp(
+      root.current.position.y,
+      opening ? -0.38 : 0,
+      9,
+      dt,
+    );
+    if (pack.current) {
+      const drop = progress(timeline.current, 1.29, 0.7);
+      pack.current.position.y = -5 * drop;
+      pack.current.position.x = 0.7 * drop;
+      pack.current.rotation.z = -0.25 * drop;
+      const sealed = phase === "sealed" && !reduced && !tearGesture.current;
+      pack.current.rotation.x = damp(
+        pack.current.rotation.x,
+        sealed ? -pointer.y * 0.065 : 0.08 * drop,
+        9,
         dt,
       );
-
-      const tiltIntensity = 2;
-
-      packRoot.current.rotation.x = damp(
-        packRoot.current.rotation.x,
-        sealed && !reduced ? -pointer.y * radians(3 * tiltIntensity) : 0,
-        10,
+      pack.current.rotation.y = damp(
+        pack.current.rotation.y,
+        sealed
+          ? pointer.x * 0.12 + Math.sin(clock.elapsedTime * 0.5) * 0.04
+          : 0,
+        9,
         dt,
       );
-
-      packRoot.current.rotation.y = damp(
-        packRoot.current.rotation.y,
-        sealed && !reduced ? pointer.x * radians(5 * tiltIntensity) : 0,
-        10,
-        dt,
-      );
-
-      packRoot.current.rotation.z = damp(
-        packRoot.current.rotation.z,
-        sealed && !reduced ? pointer.x * radians(0.5 * tiltIntensity) : 0,
-        10,
-        dt,
-      );
+      if (sealed)
+        pack.current.position.y = Math.sin(clock.elapsedTime * 1.2) * 0.025;
     }
-
-    if (phase !== "opening") {
-      openingStarted.current = false;
-      return;
-    }
-
-    if (!openingStarted.current) {
-      openingStarted.current = true;
-      return;
-    }
-
-    timeline.current = Math.min(OPEN_DURATION, timeline.current + dt);
-
-    if (timeline.current >= OPEN_DURATION) finish();
   });
-
   return (
     <>
-      <ambientLight intensity={1.05} />
-      <directionalLight position={[-3, 5, 6]} color="#f4ecff" intensity={1} />
-      {/* <directionalLight position={[4, 1, 5]} color="#becde3" intensity={1.25} /> */}
+      <color attach="background" args={["#9dc6e2"]} />
 
-      <Environment preset="city" environmentIntensity={1} />
+      {/* <StarsBackground /> */}
 
-      <SceneStickers />
+      <TwinklingStars count={180} />
+
+      <fog attach="fog" args={["#9dc6e2", 8, 22]} />
+      <ambientLight intensity={1.2} />
+      <directionalLight position={[-3, 5, 6]} intensity={2} color="#dfefff" />
+      <directionalLight position={[4, -1, 3]} intensity={1.5} color="#b5a0d9" />
+
+      <ReflectiveFloor />
 
       {textures && (
-        <group key={cycle} ref={stageRoot} scale={sceneScale}>
-          <group ref={packRoot}>
-            {phase !== "sealed" && (
-              <CardStack
-                phase={phase}
-                timeline={timeline}
-                sceneScale={sceneScale}
-                feedback={feedback}
-                onActive={onActive}
-                onViewed={onViewed}
-                onSpread={onSpread}
-                onSelected={onSelected}
-                selected={selected}
-                controls={controls}
-                reduced={reduced}
-              />
-            )}
-            <BoosterPack
-              phase={phase}
-              timeline={timeline}
-              open={open}
-              feedback={feedback}
-              reduced={reduced}
-              textures={textures}
-              tearGesture={tearGesture}
+        <group key={cycle} ref={root}>
+          {phase !== "sealed" && (
+            <CardStack
+              {...{
+                phase,
+                timeline,
+                reduced,
+                active,
+                flipped,
+                onNavigate,
+                onFlip,
+                feedback,
+              }}
             />
-          </group>
+          )}
+          {phase !== "cards" && (
+            <group ref={pack}>
+              <BoosterPack
+                {...{
+                  phase,
+                  timeline,
+                  open,
+                  feedback,
+                  reduced,
+                  textures,
+                  tearGesture,
+                }}
+              />
+            </group>
+          )}
         </group>
       )}
     </>

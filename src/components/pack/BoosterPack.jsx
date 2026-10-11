@@ -22,6 +22,7 @@ export default function BoosterPack({
       reduced={reduced}
       tearGesture={tearGesture}
       onTearComplete={() => open(true)}
+      onOpen={() => open(false)}
       feedback={feedback}
     />
   );
